@@ -1,0 +1,64 @@
+---
+interface Props {
+  currentStep: number;
+  totalSteps: number;
+}
+
+const { currentStep, totalSteps } = Astro.props;
+const progressPercentage = (currentStep / totalSteps) * 100;
+---
+
+<progress-bar 
+  data-current-step={currentStep} 
+  data-total-steps={totalSteps} 
+  class="mb-8"
+>
+  <div class="flex justify-between mb-1">
+    <span class="text-sm font-medium text-blue-600">Step <span class="step-num">{currentStep}</span> of {totalSteps}</span>
+    <span class="text-sm font-medium text-blue-600"><span class="progress-percent">{Math.round(progressPercentage)}</span>%</span>
+  </div>
+  <div class="w-full bg-gray-200 rounded-full h-2.5">
+    <div 
+      class="progress-bar bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-in-out" 
+      style={`width: ${progressPercentage}%`}>
+    </div>
+  </div>
+</progress-bar>
+
+<script>
+  class ProgressBarComponent extends HTMLElement {
+    constructor() {
+      super();
+      
+      // Initialize with data attributes
+      this.update();
+    }
+    
+    static get observedAttributes() {
+      return ['data-current-step'];
+    }
+    
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (name === 'data-current-step' && oldValue !== newValue) {
+        this.update();
+      }
+    }
+    
+    update() {
+      const currentStep = parseInt(this.getAttribute('data-current-step') || '1');
+      const totalSteps = parseInt(this.getAttribute('data-total-steps') || '4');
+      const percentage = (currentStep / totalSteps) * 100;
+      
+      // Update text elements
+      const stepNumEl = this.querySelector('.step-num');
+      const percentEl = this.querySelector('.progress-percent');
+      const progressBarEl = this.querySelector('.progress-bar');
+      
+      if (stepNumEl) stepNumEl.textContent = currentStep.toString();
+      if (percentEl) percentEl.textContent = Math.round(percentage).toString();
+      if (progressBarEl) progressBarEl.style.width = `${percentage}%`;
+    }
+  }
+  
+  customElements.define('progress-bar', ProgressBarComponent);
+</script> 
