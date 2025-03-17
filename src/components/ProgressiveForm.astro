@@ -137,6 +137,21 @@ import ProgressBar from './ProgressBar.astro';
       <h2 class="text-2xl font-bold text-gray-800 mb-2">Thank You!</h2>
       <p id="successMessage" class="text-gray-600">Your information has been submitted successfully.</p>
     </div>
+
+    <div id="loading-container" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-white bg-opacity-95">
+      <div class="w-full max-w-md px-6 py-8 bg-white rounded-xl shadow-lg text-center">
+        <div class="animate-pulse mb-4">
+          <svg class="w-16 h-16 text-blue-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Analyzing Your Brand</h2>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+          <div id="form-loading-progress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <p id="form-loading-message" class="text-gray-600">Preparing your brand analysis...</p>
+      </div>
+    </div>
   </form>
 </div>
 
@@ -201,33 +216,24 @@ import ProgressBar from './ProgressBar.astro';
             title: formData.get('title')
           };
           
-          // Comment out HubSpot submission for testing
-          /*
-          // Submit to HubSpot endpoint
-          const response = await fetch('/api/hubspot', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-          });
+          // Show loading overlay
+          const loadingContainer = document.getElementById('loading-container');
+          loadingContainer?.classList.remove('hidden');
           
-          if (response.ok) {
-            const result = await response.json();
-            console.log('Form submission result:', result);
-          */
-            
+          // Start progress animation
+          startLoadingAnimation();
+          
+          // Wait a moment to show loading (for better UX)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Set a flag in sessionStorage to indicate we're coming from form submission
+          sessionStorage.setItem('comingFromForm', 'true');
+          
           // For testing: Skip HubSpot and go straight to dashboard
           console.log('Form data (HubSpot disabled for testing):', data);
           
-          // Redirect to dashboard with form submission parameter
+          // Redirect to dashboard with form submission parameter after a short delay
           window.location.href = `/dashboard/${encodeURIComponent(data.brandName)}?formSubmitted=true`;
-          
-          /*
-          } else {
-            alert('There was an error submitting your form. Please try again.');
-          }
-          */
         } catch (error) {
           console.error('Error submitting form:', error);
           alert('There was an error submitting your form. Please try again.');
@@ -364,6 +370,36 @@ import ProgressBar from './ProgressBar.astro';
 
     // Add this to the end of your initialization code
     setupEnterKeyNavigation();
+
+    // Function to animate the loading progress
+    function startLoadingAnimation() {
+      const loadingProgress = document.getElementById('form-loading-progress');
+      const loadingMessage = document.getElementById('form-loading-message');
+      const messages = [
+        "Preparing your brand analysis...",
+        "Accessing Google Trends data...",
+        "Finding domain authority insights...",
+        "Gathering SERP positioning data...",
+        "Generating AI brand analysis..."
+      ];
+      let messageIndex = 0;
+      let progress = 0;
+      
+      const interval = setInterval(() => {
+        if (progress < 90) {
+          progress += 5;
+          if (loadingProgress) loadingProgress.style.width = `${progress}%`;
+        }
+        
+        if (progress % 20 === 0) {
+          messageIndex = (messageIndex + 1) % messages.length;
+          if (loadingMessage) loadingMessage.textContent = messages[messageIndex];
+        }
+      }, 500);
+      
+      // Clear the interval after 10 seconds (failsafe)
+      setTimeout(() => clearInterval(interval), 10000);
+    }
   });
 </script>
 

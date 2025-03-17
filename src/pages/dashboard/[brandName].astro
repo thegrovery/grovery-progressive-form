@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getNewsData, getSerpData } from '../../lib/api-services';
+import { getNewsData, getSerpData, generateAiAnalysis } from '../../lib/api-services';
 import BrandSentimentCard from '../../components/dashboard/BrandSentimentCard.astro';
 import SearchInsightsCard from '../../components/dashboard/SearchInsightsCard.astro';
 import TrendsChart from '../../components/dashboard/TrendsChart.astro';
@@ -20,6 +20,11 @@ if (!hasSubmittedForm) {
 let newsData = { articles: [] };
 let serpData = { organicResults: [] };
 let trendsData = { interest_over_time: { timeline_data: [], averages: [] } };
+
+// Calculate overall sentiment score (0-100) from news data
+let sentimentScore = 0;
+let domainAuthority = 0;
+let aiAnalysis = null;
 
 try {
   // These can be run in parallel to improve performance
@@ -52,14 +57,34 @@ try {
 }
 
 // Calculate overall sentiment score (0-100) from news data
-let sentimentScore = 0;
 if (newsData.articles?.length > 0) {
   const totalSentiment = newsData.articles.reduce((acc, article) => acc + (article.sentiment || 0), 0);
   sentimentScore = Math.round((totalSentiment / newsData.articles.length) * 100);
 }
 
 // Extract domain authority if available
-const domainAuthority = serpData.domainAuthority || 0;
+if (serpData.domainAuthority) {
+  domainAuthority = serpData.domainAuthority;
+}
+
+// Add AI Analysis data
+try {
+  // Only fetch AI analysis if we have some data to work with
+  if (brandName && (newsData.articles?.length > 0 || serpData.organicResults?.length > 0)) {
+    // Prepare data for AI analysis
+    const brandData = {
+      name: brandName,
+      news: newsData,
+      serp: serpData,
+      sentimentScore: sentimentScore,
+      domainAuthority: domainAuthority
+    };
+    
+    aiAnalysis = await generateAiAnalysis(brandData);
+  }
+} catch (error) {
+  console.error("Error generating AI analysis:", error);
+}
 ---
 
 <Layout title={`${brandName} Brand Analysis`}>
@@ -107,6 +132,53 @@ const domainAuthority = serpData.domainAuthority || 0;
         )}
       </div>
       
+      <!-- Add AI Analysis Section before the CTA -->
+      {aiAnalysis && (
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+          <h2 class="text-xl font-semibold mb-4">AI Analysis</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 class="font-bold text-green-700 mb-2">Strengths</h3>
+              <ul class="list-disc pl-5 space-y-1">
+                {aiAnalysis.strengths?.map(strength => (
+                  <li>{strength}</li>
+                )) || <li>No strengths identified</li>}
+              </ul>
+              
+              <h3 class="font-bold text-red-700 mt-4 mb-2">Weaknesses</h3>
+              <ul class="list-disc pl-5 space-y-1">
+                {aiAnalysis.weaknesses?.map(weakness => (
+                  <li>{weakness}</li>
+                )) || <li>No weaknesses identified</li>}
+              </ul>
+            </div>
+            
+            <div>
+              <h3 class="font-bold text-blue-700 mb-2">Opportunities</h3>
+              <ul class="list-disc pl-5 space-y-1">
+                {aiAnalysis.opportunities?.map(opportunity => (
+                  <li>{opportunity}</li>
+                )) || <li>No opportunities identified</li>}
+              </ul>
+              
+              <h3 class="font-bold text-amber-700 mt-4 mb-2">Threats</h3>
+              <ul class="list-disc pl-5 space-y-1">
+                {aiAnalysis.threats?.map(threat => (
+                  <li>{threat}</li>
+                )) || <li>No threats identified</li>}
+              </ul>
+            </div>
+          </div>
+          
+          {aiAnalysis.summary && (
+            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h3 class="font-bold mb-2">Summary</h3>
+              <p>{aiAnalysis.summary}</p>
+            </div>
+          )}
+        </div>
+      )}
+      
       <div class="mt-10 p-6 bg-blue-50 rounded-xl">
         <h2 class="text-2xl font-bold mb-4">Ready for a deeper analysis?</h2>
         <p class="mb-4">Book a "Greenhouse" discovery meeting with our team to receive your full brand health report.</p>
@@ -119,11 +191,9 @@ const domainAuthority = serpData.domainAuthority || 0;
 </Layout>
 
 <script>
-  // Import chart libraries on the client side
-  import Chart from 'chart.js/auto';
-  
-  // Initialize charts after page load
+  // Remove the sessionStorage flag when dashboard is loaded
   document.addEventListener('DOMContentLoaded', () => {
-    // Initialize any client-side charts or interactive elements
+    // Clear the form submission flag
+    sessionStorage.removeItem('comingFromForm');
   });
 </script> 

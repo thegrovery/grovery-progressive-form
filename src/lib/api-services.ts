@@ -62,7 +62,7 @@ export async function getGoogleTrendsData(brandName: string) {
       const data = await response.json();
       
       // Calculate basic sentiment from titles and descriptions
-      const articles = data.articles.map(article => {
+      const articles = data.articles.map((article: any) => {
         return {
           ...article,
           // Add simple positive/negative keyword analysis 
@@ -84,7 +84,7 @@ export async function getGoogleTrendsData(brandName: string) {
         totalResults: 0,
         sentimentSummary: { positive: 0, neutral: 0, negative: 0 },
         sourceDiversity: 0,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
@@ -92,6 +92,30 @@ export async function getGoogleTrendsData(brandName: string) {
   export async function getSerpData(brandName: string) {
     try {
       const serpApiKey = import.meta.env.SERP_API_KEY;
+      
+      // If no API key, return mock data
+      if (!serpApiKey) {
+        console.warn('SERP_API_KEY not found, returning mock data');
+        return {
+          organicResults: [
+            { position: 1, title: `${brandName} Official Website`, link: `https://www.${brandName.toLowerCase()}.com` },
+            { position: 2, title: `${brandName} - Wikipedia`, link: `https://en.wikipedia.org/wiki/${brandName}` }
+          ],
+          knowledgeGraph: { title: brandName },
+          relatedSearches: [`${brandName} products`, `${brandName} history`],
+          rankingPosition: 1,
+          hasKnowledgeGraph: true,
+          domainAuthority: 65,
+          topCompetitors: ['Competitor1', 'Competitor2'],
+          serp_features: {
+            hasMap: true,
+            hasNews: true,
+            hasImages: true,
+            hasVideos: true
+          }
+        };
+      }
+      
       const encodedBrand = encodeURIComponent(brandName);
       
       // SerpAPI implementation
@@ -133,7 +157,7 @@ export async function getGoogleTrendsData(brandName: string) {
             domainAuthority = mozData.domainAuthority;
             
             // Add domain authority to the SERP data
-            serpData.domainAuthority = domainAuthority;
+            (serpData as any).domainAuthority = domainAuthority;
           } catch (e) {
             console.error('Error extracting domain or fetching Moz data:', e);
           }
@@ -156,39 +180,76 @@ export async function getGoogleTrendsData(brandName: string) {
           hasImages: false,
           hasVideos: false
         },
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       };
     }
   }
   
   export async function generateAiAnalysis(brandData: any) {
-    // Implementation using OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a brand analysis expert. Create a concise SWOT analysis based on the provided brand data.'
-          },
-          {
-            role: 'user',
-            content: `Generate a SWOT analysis for ${brandData.name}. Here's the data: ${JSON.stringify(brandData)}`
-          }
-        ]
-      })
-    });
-    
-    return await response.json();
+    try {
+      const openaiApiKey = import.meta.env.OPENAI_API_KEY;
+      
+      if (!openaiApiKey) {
+        console.warn('OPENAI_API_KEY not found, returning mock data');
+        return {
+          strengths: ['Strong brand recognition', 'Established market presence', 'Quality product offering'],
+          weaknesses: ['Limited digital presence', 'Inconsistent messaging'],
+          opportunities: ['Digital marketing expansion', 'Social media engagement', 'Content marketing strategy'],
+          threats: ['Increasing competition', 'Changing market trends'],
+          summary: 'This brand has potential for growth with the right digital strategy.'
+        };
+      }
+      
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a brand analysis expert. Create a concise SWOT analysis based on the provided brand data.'
+            },
+            {
+              role: 'user',
+              content: `Generate a SWOT analysis for ${brandData.name}. Here's the data: ${JSON.stringify(brandData)}`
+            }
+          ],
+          temperature: 0.7,
+          response_format: { type: "json_object" }
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('Empty response from OpenAI');
+      }
+      
+      // Parse the JSON response
+      return JSON.parse(content);
+    } catch (error) {
+      console.error('Error generating AI analysis:', error);
+      return {
+        strengths: ['Unable to analyze strengths due to API error'],
+        weaknesses: ['Unable to analyze weaknesses due to API error'],
+        opportunities: ['Unable to analyze opportunities due to API error'],
+        threats: ['Unable to analyze threats due to API error'],
+        summary: 'We encountered an error analyzing this brand. Please try again later.'
+      };
+    }
   }
 
   // Helper functions
-  function calculateSimpleSentiment(text) {
+  function calculateSimpleSentiment(text: string) {
     const positiveWords = ['great', 'excellent', 'good', 'positive', 'success', 'innovative', 'best', 'leading', 'growth'];
     const negativeWords = ['bad', 'poor', 'negative', 'failure', 'scandal', 'problem', 'issue', 'worst', 'decline', 'lawsuit'];
     
@@ -210,8 +271,8 @@ export async function getGoogleTrendsData(brandName: string) {
     return 'neutral';
   }
 
-  function summarizeSentiment(articles) {
-    const sentiments = articles.reduce((acc, article) => {
+  function summarizeSentiment(articles: any) {
+    const sentiments = articles.reduce((acc: any, article: any) => {
       acc[article.sentiment] = (acc[article.sentiment] || 0) + 1;
       return acc;
     }, { positive: 0, neutral: 0, negative: 0 });
@@ -219,9 +280,9 @@ export async function getGoogleTrendsData(brandName: string) {
     return sentiments;
   }
 
-  function calculateSourceDiversity(articles) {
+  function calculateSourceDiversity(articles: any) {
     const sources = new Set();
-    articles.forEach(article => {
+    articles.forEach((article: any) => {
       if (article.source && article.source.name) {
         sources.add(article.source.name);
       }
@@ -231,7 +292,7 @@ export async function getGoogleTrendsData(brandName: string) {
     return Math.min(10, Math.round((sources.size / articles.length) * 20));
   }
 
-  function findBrandPosition(organicResults, brandName) {
+  function findBrandPosition(organicResults: any, brandName: any) {
     if (!organicResults || !organicResults.length) return null;
     
     const lowerBrand = brandName.toLowerCase();
@@ -249,12 +310,12 @@ export async function getGoogleTrendsData(brandName: string) {
     return null; // Brand not found in top results
   }
 
-  function extractCompetitors(serpData) {
-    const competitors = [];
+  function extractCompetitors(serpData: any) {
+    const competitors: any[] = [];
     
     // Check related searches for potential competitors
     if (serpData.related_searches) {
-      serpData.related_searches.forEach(item => {
+      serpData.related_searches.forEach((item: any) => {
         if (item.query && item.query.toLowerCase().includes('vs ')) {
           const parts = item.query.split('vs ');
           competitors.push(parts[1].trim());
@@ -264,7 +325,7 @@ export async function getGoogleTrendsData(brandName: string) {
     
     // Check "People also search for" section
     if (serpData.knowledge_graph && serpData.knowledge_graph.people_also_search_for) {
-      serpData.knowledge_graph.people_also_search_for.forEach(item => {
+      serpData.knowledge_graph.people_also_search_for.forEach((item: any) => {
         competitors.push(item.name);
       });
     }
