@@ -14,6 +14,7 @@
     "@hubspot/api-client": "^12.0.1",
     "@tailwindcss/vite": "^4.0.14",
     "astro": "^5.5.2",
+    "chart.js": "^4.4.8",
     "resend": "^4.1.2",
     "tailwindcss": "^3.3.3"
   },

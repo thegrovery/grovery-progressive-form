@@ -1,0 +1,76 @@
+---
+// Brand Sentiment Card Component
+const { score = 0 } = Astro.props;
+
+// Determine color based on score
+const scoreColor = score >= 70 ? 'green' : score >= 50 ? 'amber' : 'red';
+---
+
+<div class="bg-white p-6 rounded-xl shadow-md">
+  <h2 class="text-xl font-semibold mb-4">Brand Sentiment</h2>
+  
+  <div class="flex items-center justify-between">
+    <div class="sentiment-score-chart" data-score={score} data-color={scoreColor}>
+      <!-- Circle chart will be rendered here by client script -->
+      <div class="relative h-32 w-32">
+        <svg class="w-full h-full" viewBox="0 0 36 36">
+          <path class="circle-bg"
+            d="M18 2.0845
+              a 15.9155 15.9155 0 0 1 0 31.831
+              a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="#eee"
+            stroke-width="3"
+          />
+          <path class={`circle-progress text-${scoreColor}-500`}
+            d="M18 2.0845
+              a 15.9155 15.9155 0 0 1 0 31.831
+              a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-dasharray={`${score}, 100`}
+          />
+          <text x="18" y="20.5" class="score-text text-3xl font-bold" text-anchor="middle">{score}</text>
+        </svg>
+      </div>
+    </div>
+    
+    <div class="sentiment-stats">
+      <h3 class="font-medium text-lg mb-2">Sentiment Breakdown</h3>
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <span>Positive</span>
+          <div class="w-32 bg-gray-200 rounded-full h-2">
+            <div class="bg-green-500 h-2 rounded-full" style={`width: ${score > 75 ? 75 : score}%`}></div>
+          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>Neutral</span>
+          <div class="w-32 bg-gray-200 rounded-full h-2">
+            <div class="bg-amber-400 h-2 rounded-full" style={`width: ${Math.min(100 - score, 50)}%`}></div>
+          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span>Negative</span>
+          <div class="w-32 bg-gray-200 rounded-full h-2">
+            <div class="bg-red-500 h-2 rounded-full" style={`width: ${Math.max(0, 100 - score - 50)}%`}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .circle-progress {
+    stroke-dashoffset: 0;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+  
+  .score-text {
+    font-size: 0.6rem;
+    line-height: 1;
+  }
+</style> 

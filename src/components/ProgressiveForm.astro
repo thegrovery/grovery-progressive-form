@@ -201,6 +201,8 @@ import ProgressBar from './ProgressBar.astro';
             title: formData.get('title')
           };
           
+          // Comment out HubSpot submission for testing
+          /*
           // Submit to HubSpot endpoint
           const response = await fetch('/api/hubspot', {
             method: 'POST',
@@ -213,17 +215,19 @@ import ProgressBar from './ProgressBar.astro';
           if (response.ok) {
             const result = await response.json();
             console.log('Form submission result:', result);
+          */
             
-            // Update the success message to show what happened
-            const successMessage = document.querySelector('#successMessage');
-            if (successMessage) {
-              successMessage.textContent = result.message || 'Form submitted successfully!';
-            }
-            
-            showStep(5); // Show success message
+          // For testing: Skip HubSpot and go straight to dashboard
+          console.log('Form data (HubSpot disabled for testing):', data);
+          
+          // Redirect to dashboard with form submission parameter
+          window.location.href = `/dashboard/${encodeURIComponent(data.brandName)}?formSubmitted=true`;
+          
+          /*
           } else {
             alert('There was an error submitting your form. Please try again.');
           }
+          */
         } catch (error) {
           console.error('Error submitting form:', error);
           alert('There was an error submitting your form. Please try again.');

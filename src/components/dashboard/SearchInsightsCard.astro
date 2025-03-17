@@ -1,0 +1,85 @@
+---
+// Search Insights Card Component
+const { serpData = {}, domainAuthority = 0 } = Astro.props;
+
+// Extract metrics from SERP data
+const organicResults = serpData.organicResults || [];
+const topPosition = organicResults.length > 0 ? organicResults[0].position || 0 : 0;
+const featuredInSnippet = serpData.answerBox ? true : false;
+const knowledgePanel = serpData.knowledgeGraph ? true : false;
+---
+
+<div class="bg-white p-6 rounded-xl shadow-md">
+  <h2 class="text-xl font-semibold mb-4">Search Insights</h2>
+  
+  <div class="grid grid-cols-2 gap-4 mb-4">
+    <div class="bg-gray-50 p-3 rounded-lg">
+      <p class="text-sm text-gray-500">Domain Authority</p>
+      <div class="flex items-center">
+        <div class="relative h-12 w-12 mr-3">
+          <svg class="w-full h-full" viewBox="0 0 36 36">
+            <path class="circle-bg"
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="#eee"
+              stroke-width="3"
+            />
+            <path class="circle-progress text-blue-500"
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-dasharray={`${domainAuthority}, 100`}
+            />
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center text-lg font-bold">
+            {domainAuthority}
+          </div>
+        </div>
+        <div>
+          <p class="font-medium">{domainAuthority > 50 ? 'Strong' : domainAuthority > 30 ? 'Moderate' : 'Developing'}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-gray-50 p-3 rounded-lg">
+      <p class="text-sm text-gray-500">SERP Position</p>
+      <p class="text-2xl font-bold">{topPosition > 0 ? `#${topPosition}` : 'N/A'}</p>
+    </div>
+  </div>
+  
+  <div class="space-y-2">
+    <div class="flex items-center">
+      <div class={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${featuredInSnippet ? 'bg-green-100 text-green-500' : 'bg-gray-100 text-gray-400'}`}>
+        {featuredInSnippet ? '✓' : '×'}
+      </div>
+      <span>Featured Snippet</span>
+    </div>
+    
+    <div class="flex items-center">
+      <div class={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${knowledgePanel ? 'bg-green-100 text-green-500' : 'bg-gray-100 text-gray-400'}`}>
+        {knowledgePanel ? '✓' : '×'}
+      </div>
+      <span>Knowledge Panel</span>
+    </div>
+    
+    <div class="flex items-center">
+      <div class={`w-5 h-5 rounded-full flex items-center justify-center mr-2 ${organicResults.length > 3 ? 'bg-green-100 text-green-500' : 'bg-gray-100 text-gray-400'}`}>
+        {organicResults.length > 3 ? '✓' : '×'}
+      </div>
+      <span>Multiple Organic Results</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .circle-progress {
+    stroke-dashoffset: 0;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+</style> 

@@ -1,0 +1,129 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getNewsData, getSerpData } from '../../lib/api-services';
+import BrandSentimentCard from '../../components/dashboard/BrandSentimentCard.astro';
+import SearchInsightsCard from '../../components/dashboard/SearchInsightsCard.astro';
+import TrendsChart from '../../components/dashboard/TrendsChart.astro';
+
+// Get brand name from URL params and provide a default if undefined
+const { brandName = '' } = Astro.params;
+
+// Simple session check using URL parameters
+const hasSubmittedForm = Astro.url.searchParams.get('formSubmitted') === 'true';
+
+// If no form submission indicator, redirect to form
+if (!hasSubmittedForm) {
+  return Astro.redirect('/?error=Please+fill+out+the+form+first');
+}
+
+// Fetch data for the dashboard
+let newsData = { articles: [] };
+let serpData = { organicResults: [] };
+let trendsData = { interest_over_time: { timeline_data: [], averages: [] } };
+
+try {
+  // These can be run in parallel to improve performance
+  const [newsResult, serpResult] = await Promise.all([
+    getNewsData(brandName || ''),
+    getSerpData(brandName || '')
+  ]);
+  
+  newsData = newsResult;
+  serpData = serpResult;
+  
+  // Fetch Google Trends data if we have a brand name
+  if (brandName) {
+    // Use SerpAPI's Google Trends endpoint - you'll need to implement this function
+    const getTrendsData = async (query) => {
+      const apiKey = import.meta.env.SERPAPI_KEY;
+      const url = `https://serpapi.com/search.json?engine=google_trends&q=${encodeURIComponent(query)}&date=today+12-m&data_type=TIMESERIES&api_key=${apiKey}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch trends data');
+      }
+      return response.json();
+    };
+    
+    trendsData = await getTrendsData(brandName);
+  }
+} catch (error) {
+  console.error("Error fetching brand data:", error);
+}
+
+// Calculate overall sentiment score (0-100) from news data
+let sentimentScore = 0;
+if (newsData.articles?.length > 0) {
+  const totalSentiment = newsData.articles.reduce((acc, article) => acc + (article.sentiment || 0), 0);
+  sentimentScore = Math.round((totalSentiment / newsData.articles.length) * 100);
+}
+
+// Extract domain authority if available
+const domainAuthority = serpData.domainAuthority || 0;
+---
+
+<Layout title={`${brandName} Brand Analysis`}>
+  <main class="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-3xl font-bold mb-8">Brand Health Analysis: {brandName}</h1>
+      
+      <!-- Google Trends Over Time -->
+      <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+        <h2 class="text-xl font-semibold mb-4">Brand Interest Trends</h2>
+        <TrendsChart data={trendsData} brandName={brandName} />
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Brand Sentiment Score -->
+        <BrandSentimentCard score={sentimentScore} />
+        
+        <!-- Brand Insights -->
+        <SearchInsightsCard serpData={serpData} domainAuthority={domainAuthority} />
+      </div>
+      
+      <!-- News Mentions -->
+      <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+        <h2 class="text-xl font-semibold mb-4">Recent News Mentions</h2>
+        {newsData.articles?.length > 0 ? (
+          <ul class="space-y-4">
+            {newsData.articles.slice(0, 5).map(article => (
+              <li class="border-l-4 border-blue-500 pl-4">
+                <a href={article.url} class="text-blue-600 hover:underline font-medium" target="_blank" rel="noopener">
+                  {article.title}
+                </a>
+                <p class="text-sm text-gray-600">
+                  {article.source?.name} • {new Date(article.publishedAt).toLocaleDateString()}
+                  {article.sentiment && (
+                    <span class={`ml-2 px-2 py-1 rounded-full text-xs ${article.sentiment > 0 ? 'bg-green-100 text-green-800' : article.sentiment < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {article.sentiment > 0 ? 'Positive' : article.sentiment < 0 ? 'Negative' : 'Neutral'}
+                    </span>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No recent news articles found for this brand.</p>
+        )}
+      </div>
+      
+      <div class="mt-10 p-6 bg-blue-50 rounded-xl">
+        <h2 class="text-2xl font-bold mb-4">Ready for a deeper analysis?</h2>
+        <p class="mb-4">Book a "Greenhouse" discovery meeting with our team to receive your full brand health report.</p>
+        <a href="/schedule-meeting" class="inline-block bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition">
+          Schedule Your Greenhouse Meeting
+        </a>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  // Import chart libraries on the client side
+  import Chart from 'chart.js/auto';
+  
+  // Initialize charts after page load
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize any client-side charts or interactive elements
+  });
+</script> 
