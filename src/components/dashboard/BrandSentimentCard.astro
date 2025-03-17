@@ -1,65 +1,116 @@
 ---
 // Brand Sentiment Card Component
-const { score = 0 } = Astro.props;
+const { score = 50, summary = '' } = Astro.props;
 
 // Determine color based on score
-const scoreColor = score >= 70 ? 'green' : score >= 50 ? 'amber' : 'red';
+let color = 'text-yellow-500';
+let bgColor = 'from-yellow-500';
+let label = 'Neutral';
+
+if (score >= 70) {
+  color = 'text-green-500';
+  bgColor = 'from-green-500';
+  label = 'Positive';
+} else if (score <= 30) {
+  color = 'text-red-500';
+  bgColor = 'from-red-500';
+  label = 'Negative';
+}
+
+// Calculate percentages for the progress bars
+const positivePercent = Math.min(100, Math.max(0, score));
+const neutralPercent = Math.min(100, Math.max(0, 100 - Math.abs(score - 50) * 2));
+const negativePercent = Math.min(100, Math.max(0, 100 - score));
+
+// Clean up summary text - remove asterisks, "Summary:", and other markdown formatting
+const cleanSummary = summary
+  .replace(/^\s*\*+\s*/, '') // Remove leading asterisks
+  .replace(/^Summary:\s*/i, '') // Remove "Summary:" prefix
+  .replace(/\*\*/g, '') // Remove all double asterisks (bold markdown)
+  .trim();
 ---
 
 <div class="bg-white p-6 rounded-xl shadow-md">
   <h2 class="text-xl font-semibold mb-4">Brand Sentiment</h2>
   
-  <div class="flex items-center justify-between">
-    <div class="sentiment-score-chart" data-score={score} data-color={scoreColor}>
-      <!-- Circle chart will be rendered here by client script -->
-      <div class="relative h-32 w-32">
-        <svg class="w-full h-full" viewBox="0 0 36 36">
-          <path class="circle-bg"
-            d="M18 2.0845
-              a 15.9155 15.9155 0 0 1 0 31.831
-              a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="#eee"
-            stroke-width="3"
-          />
-          <path class={`circle-progress text-${scoreColor}-500`}
-            d="M18 2.0845
-              a 15.9155 15.9155 0 0 1 0 31.831
-              a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3"
-            stroke-dasharray={`${score}, 100`}
-          />
-          <text x="18" y="20.5" class="score-text text-3xl font-bold" text-anchor="middle">{score}</text>
-        </svg>
+  <div class="flex items-center justify-between mb-6">
+    <!-- Sentiment Score Gauge -->
+    <div class="relative w-32 h-32">
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class={`text-4xl font-bold ${color}`}>{score}</div>
       </div>
+      <svg class="w-full h-full" viewBox="0 0 100 100">
+        <!-- Background circle -->
+        <circle 
+          cx="50" 
+          cy="50" 
+          r="45" 
+          fill="none" 
+          stroke="#f0f0f0" 
+          stroke-width="10"
+          stroke-dasharray="283"
+          stroke-dashoffset="0"
+          transform="rotate(-90 50 50)"
+        />
+        <!-- Foreground circle -->
+        <circle 
+          cx="50" 
+          cy="50" 
+          r="45" 
+          fill="none" 
+          stroke={color.replace('text-', 'stroke-')} 
+          stroke-width="10"
+          stroke-dasharray="283"
+          stroke-dashoffset={`${283 - (283 * score / 100)}`}
+          transform="rotate(-90 50 50)"
+          stroke-linecap="round"
+        />
+      </svg>
     </div>
     
-    <div class="sentiment-stats">
-      <h3 class="font-medium text-lg mb-2">Sentiment Breakdown</h3>
-      <div class="space-y-2">
-        <div class="flex justify-between items-center">
+    <!-- Sentiment Breakdown -->
+    <div class="flex-1 ml-6">
+      <h3 class="text-sm font-medium mb-3">Sentiment Breakdown</h3>
+      
+      <!-- Positive -->
+      <div class="mb-2">
+        <div class="flex justify-between text-xs mb-1">
           <span>Positive</span>
-          <div class="w-32 bg-gray-200 rounded-full h-2">
-            <div class="bg-green-500 h-2 rounded-full" style={`width: ${score > 75 ? 75 : score}%`}></div>
-          </div>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-green-500 rounded-full" style={`width: ${positivePercent}%`}></div>
+        </div>
+      </div>
+      
+      <!-- Neutral -->
+      <div class="mb-2">
+        <div class="flex justify-between text-xs mb-1">
           <span>Neutral</span>
-          <div class="w-32 bg-gray-200 rounded-full h-2">
-            <div class="bg-amber-400 h-2 rounded-full" style={`width: ${Math.min(100 - score, 50)}%`}></div>
-          </div>
         </div>
-        <div class="flex justify-between items-center">
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-yellow-500 rounded-full" style={`width: ${neutralPercent}%`}></div>
+        </div>
+      </div>
+      
+      <!-- Negative -->
+      <div>
+        <div class="flex justify-between text-xs mb-1">
           <span>Negative</span>
-          <div class="w-32 bg-gray-200 rounded-full h-2">
-            <div class="bg-red-500 h-2 rounded-full" style={`width: ${Math.max(0, 100 - score - 50)}%`}></div>
-          </div>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-red-500 rounded-full" style={`width: ${negativePercent}%`}></div>
         </div>
       </div>
     </div>
   </div>
+  
+  <!-- Summary Section (New) -->
+  {cleanSummary && (
+    <div class="mt-4 pt-4 border-t border-gray-200">
+      <h3 class="text-sm font-medium mb-2">Brand Summary</h3>
+      <p class="text-sm text-gray-700">{cleanSummary}</p>
+    </div>
+  )}
 </div>
 
 <style>

@@ -1,5 +1,6 @@
 ---
 import ProgressBar from './ProgressBar.astro';
+import LoadingOverlay from './LoadingOverlay.astro';
 ---
 
 <div class="w-full">
@@ -138,20 +139,8 @@ import ProgressBar from './ProgressBar.astro';
       <p id="successMessage" class="text-gray-600">Your information has been submitted successfully.</p>
     </div>
 
-    <div id="loading-container" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-white bg-opacity-95">
-      <div class="w-full max-w-md px-6 py-8 bg-white rounded-xl shadow-lg text-center">
-        <div class="animate-pulse mb-4">
-          <svg class="w-16 h-16 text-blue-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-          </svg>
-        </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Analyzing Your Brand</h2>
-        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-          <div id="form-loading-progress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-        </div>
-        <p id="form-loading-message" class="text-gray-600">Preparing your brand analysis...</p>
-      </div>
-    </div>
+    <!-- Use the LoadingOverlay component instead of hard-coding -->
+    <LoadingOverlay id="form-loading-overlay" isLoading={false} client:load />
   </form>
 </div>
 
@@ -217,8 +206,11 @@ import ProgressBar from './ProgressBar.astro';
           };
           
           // Show loading overlay
-          const loadingContainer = document.getElementById('loading-container');
-          loadingContainer?.classList.remove('hidden');
+          const loadingOverlay = document.getElementById('form-loading-overlay');
+          if (loadingOverlay) {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.style.display = 'flex';
+          }
           
           // Start progress animation
           startLoadingAnimation();
@@ -373,8 +365,8 @@ import ProgressBar from './ProgressBar.astro';
 
     // Function to animate the loading progress
     function startLoadingAnimation() {
-      const loadingProgress = document.getElementById('form-loading-progress');
-      const loadingMessage = document.getElementById('form-loading-message');
+      const loadingProgress = document.getElementById('loading-progress');
+      const loadingMessage = document.getElementById('loading-message');
       const messages = [
         "Preparing your brand analysis...",
         "Accessing Google Trends data...",

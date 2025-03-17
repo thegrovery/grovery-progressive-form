@@ -1,6 +1,6 @@
 ---
 // Define props
-const { isLoading, apiStatus } = Astro.props;
+const { isLoading = false, apiStatus = {}, id = 'loading-overlay' } = Astro.props;
 
 // Load messages for different API stages
 const messages = [
@@ -22,9 +22,8 @@ const messageIndex = Math.min(Math.floor(progress / 20), messages.length - 1);
 const currentMessage = messages[messageIndex];
 ---
 
-<div id="loading-overlay" 
-     class={!isLoading ? "hidden" : "fixed inset-0 z-50 flex flex-col items-center justify-center bg-white bg-opacity-95 transition-opacity duration-300"} 
-     style="display: block;">
+<div id={id}
+     class={`fixed inset-0 z-50 ${!isLoading ? "hidden" : "flex"} flex-col items-center justify-center bg-white bg-opacity-95 transition-opacity duration-300`}>
   <div class="w-full max-w-md px-6 py-8 bg-white rounded-xl shadow-lg text-center">
     <div class="animate-pulse mb-4">
       <svg class="w-16 h-16 text-blue-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,39 +56,10 @@ const currentMessage = messages[messageIndex];
   // Cycle through messages every few seconds
   const loadingMessage = document.getElementById('loading-message');
   const loadingProgress = document.getElementById('loading-progress');
-  const loadingOverlay = document.getElementById('loading-overlay');
   
-  console.log("Loading overlay component initialized");
-  
-  // Force loading overlay to be visible initially
-  if (loadingOverlay) {
-    loadingOverlay.style.display = 'flex';
-    console.log("Set loading overlay to visible");
-    
-    const messageInterval = setInterval(() => {
-      if (loadingOverlay.classList.contains('hidden') || loadingOverlay.style.display === 'none') {
-        clearInterval(messageInterval);
-        console.log("Cleared message interval - overlay hidden");
-        return;
-      }
-      
-      if (loadingMessage) {
-        messageIndex = (messageIndex + 1) % messages.length;
-        loadingMessage.textContent = messages[messageIndex];
-        console.log("Updated message:", messages[messageIndex]);
-      }
-      
-      // Increment progress bar
-      if (loadingProgress) {
-        const currentWidth = parseInt(loadingProgress.style.width || '0');
-        if (currentWidth < 90) {
-          const newWidth = Math.min(currentWidth + 10, 90);
-          loadingProgress.style.width = `${newWidth}%`;
-          console.log("Updated progress:", newWidth);
-        }
-      }
-    }, 2000);
-  }
+  // Reuse this component in different contexts
+  const overlayId = document.currentScript?.parentElement?.id || 'loading-overlay';
+  const loadingOverlay = document.getElementById(overlayId);
 </script>
 
 <style>

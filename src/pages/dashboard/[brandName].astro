@@ -1,11 +1,16 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getNewsData, getSerpData, generateAiAnalysis } from '../../lib/api-services';
+import { fetchMozDomainAuthority } from '../../lib/moz-api';
+import { fetchSerpResults } from '../../lib/serp-api';
 import BrandSentimentCard from '../../components/dashboard/BrandSentimentCard.astro';
-import SearchInsightsCard from '../../components/dashboard/SearchInsightsCard.astro';
 import TrendsChart from '../../components/dashboard/TrendsChart.astro';
+import MozMetricsCard from '../../components/dashboard/MozMetricsCard.astro';
+import SerpResultsCard from '../../components/dashboard/SerpResultsCard.astro';
+import AiAnalysisCard from '../../components/dashboard/AiAnalysisCard.astro';
+import type { SerpData } from '../../lib/serp-api';
 
-// Get brand name from URL params and provide a default if undefined
+// Get brand name from URL params
 const { brandName = '' } = Astro.params;
 
 // Simple session check using URL parameters
@@ -18,174 +23,139 @@ if (!hasSubmittedForm) {
 
 // Fetch data for the dashboard
 let newsData = { articles: [] };
-let serpData = { organicResults: [] };
+let serpData: SerpData = {};
+let mozData = {};
 let trendsData = { interest_over_time: { timeline_data: [], averages: [] } };
-
-// Calculate overall sentiment score (0-100) from news data
-let sentimentScore = 0;
-let domainAuthority = 0;
 let aiAnalysis = null;
 
+// Initialize sentiment score with a default value
+let sentimentScore = 50;
+
 try {
-  // These can be run in parallel to improve performance
-  const [newsResult, serpResult] = await Promise.all([
+  // Fetch data from APIs in parallel
+  const [newsResult, serpResult, mozResult] = await Promise.all([
     getNewsData(brandName || ''),
-    getSerpData(brandName || '')
+    fetchSerpResults(brandName || ''),
+    fetchMozDomainAuthority(brandName || '')
   ]);
   
   newsData = newsResult;
   serpData = serpResult;
+  mozData = mozResult;
   
-  // Fetch Google Trends data if we have a brand name
-  if (brandName) {
-    // Use SerpAPI's Google Trends endpoint - you'll need to implement this function
-    const getTrendsData = async (query) => {
-      const apiKey = import.meta.env.SERPAPI_KEY;
-      const url = `https://serpapi.com/search.json?engine=google_trends&q=${encodeURIComponent(query)}&date=today+12-m&data_type=TIMESERIES&api_key=${apiKey}`;
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch trends data');
-      }
-      return response.json();
-    };
+  // Log the data structure to help debug
+  console.log("SERP data structure:", {
+    hasOrganicResults: !!serpData.organic_results,
+    organicResultsCount: serpData.organic_results?.length || 0,
+    hasKnowledgeGraph: !!serpData.knowledge_graph,
+    hasRelatedQuestions: !!serpData.related_questions
+  });
+  
+  // 1. News sentiment (if available)
+  const newsSentiment = newsData.articles?.length 
+    ? Math.round((newsData.articles.reduce((sum, article) => sum + (article.sentiment_score || 0), 0) / newsData.articles.length) * 100)
+    : null;
+  
+  // 2. Domain authority contribution (if available)
+  const domainAuthority = mozData.domainAuthority || 0;
+  
+  // 3. SERP features contribution
+  let serpScore = 50;
+  if (serpData.organic_results?.length) {
+    // Higher score for better SERP positioning
+    const hasTopPosition = serpData.organic_results[0]?.position <= 3;
+    const hasFeaturedSnippet = !!serpData.answer_box;
+    const hasKnowledgePanel = !!serpData.knowledge_graph;
     
-    trendsData = await getTrendsData(brandName);
+    // Calculate SERP score based on features
+    serpScore = 50;
+    if (hasTopPosition) serpScore += 15;
+    if (hasFeaturedSnippet) serpScore += 10;
+    if (hasKnowledgePanel) serpScore += 10;
+    if (serpData.organic_results.length > 5) serpScore += 5;
+    
+    // Cap at 100
+    serpScore = Math.min(100, serpScore);
   }
+  
+  // Combine all scores with weights
+  const scores = [];
+  const weights = [];
+  
+  if (newsSentiment !== null) {
+    scores.push(newsSentiment);
+    weights.push(0.4); // 40% weight to news sentiment
+  }
+  
+  if (domainAuthority > 0) {
+    scores.push(domainAuthority);
+    weights.push(0.3); // 30% weight to domain authority
+  }
+  
+  scores.push(serpScore);
+  weights.push(0.3); // 30% weight to SERP features
+  
+  // Calculate weighted average
+  if (scores.length > 0) {
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    sentimentScore = Math.round(
+      scores.reduce((sum, score, index) => sum + (score * weights[index]), 0) / totalWeight
+    );
+  }
+  
+  console.log("Calculated sentiment score:", sentimentScore, "based on scores:", scores, "with weights:", weights);
+  
+  // Generate AI analysis with all the data
+  aiAnalysis = await generateAiAnalysis({
+    name: brandName,
+    sentimentScore,
+    domainAuthority: mozData.domainAuthority || 0,
+    news: newsData,
+    serp: serpData
+  });
+  
 } catch (error) {
   console.error("Error fetching brand data:", error);
-}
-
-// Calculate overall sentiment score (0-100) from news data
-if (newsData.articles?.length > 0) {
-  const totalSentiment = newsData.articles.reduce((acc, article) => acc + (article.sentiment || 0), 0);
-  sentimentScore = Math.round((totalSentiment / newsData.articles.length) * 100);
-}
-
-// Extract domain authority if available
-if (serpData.domainAuthority) {
-  domainAuthority = serpData.domainAuthority;
-}
-
-// Add AI Analysis data
-try {
-  // Only fetch AI analysis if we have some data to work with
-  if (brandName && (newsData.articles?.length > 0 || serpData.organicResults?.length > 0)) {
-    // Prepare data for AI analysis
-    const brandData = {
-      name: brandName,
-      news: newsData,
-      serp: serpData,
-      sentimentScore: sentimentScore,
-      domainAuthority: domainAuthority
-    };
-    
-    aiAnalysis = await generateAiAnalysis(brandData);
-  }
-} catch (error) {
-  console.error("Error generating AI analysis:", error);
+  // sentimentScore already has a default value, no need to set it again
 }
 ---
 
 <Layout title={`${brandName} Brand Analysis`}>
   <main class="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
-    <div class="max-w-6xl mx-auto">
-      <h1 class="text-3xl font-bold mb-8">Brand Health Analysis: {brandName}</h1>
+    <div class="max-w-7xl mx-auto">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Brand Health Analysis: {brandName}</h1>
       
-      <!-- Google Trends Over Time -->
-      <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-        <h2 class="text-xl font-semibold mb-4">Brand Interest Trends</h2>
-        <TrendsChart data={trendsData} brandName={brandName} />
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <!-- Brand Sentiment Score -->
-        <BrandSentimentCard score={sentimentScore} />
-        
-        <!-- Brand Insights -->
-        <SearchInsightsCard serpData={serpData} domainAuthority={domainAuthority} />
-      </div>
-      
-      <!-- News Mentions -->
-      <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-        <h2 class="text-xl font-semibold mb-4">Recent News Mentions</h2>
-        {newsData.articles?.length > 0 ? (
-          <ul class="space-y-4">
-            {newsData.articles.slice(0, 5).map(article => (
-              <li class="border-l-4 border-blue-500 pl-4">
-                <a href={article.url} class="text-blue-600 hover:underline font-medium" target="_blank" rel="noopener">
-                  {article.title}
-                </a>
-                <p class="text-sm text-gray-600">
-                  {article.source?.name} • {new Date(article.publishedAt).toLocaleDateString()}
-                  {article.sentiment && (
-                    <span class={`ml-2 px-2 py-1 rounded-full text-xs ${article.sentiment > 0 ? 'bg-green-100 text-green-800' : article.sentiment < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {article.sentiment > 0 ? 'Positive' : article.sentiment < 0 ? 'Negative' : 'Neutral'}
-                    </span>
-                  )}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No recent news articles found for this brand.</p>
-        )}
-      </div>
-      
-      <!-- Add AI Analysis Section before the CTA -->
-      {aiAnalysis && (
-        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-          <h2 class="text-xl font-semibold mb-4">AI Analysis</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 class="font-bold text-green-700 mb-2">Strengths</h3>
-              <ul class="list-disc pl-5 space-y-1">
-                {aiAnalysis.strengths?.map(strength => (
-                  <li>{strength}</li>
-                )) || <li>No strengths identified</li>}
-              </ul>
-              
-              <h3 class="font-bold text-red-700 mt-4 mb-2">Weaknesses</h3>
-              <ul class="list-disc pl-5 space-y-1">
-                {aiAnalysis.weaknesses?.map(weakness => (
-                  <li>{weakness}</li>
-                )) || <li>No weaknesses identified</li>}
-              </ul>
-            </div>
-            
-            <div>
-              <h3 class="font-bold text-blue-700 mb-2">Opportunities</h3>
-              <ul class="list-disc pl-5 space-y-1">
-                {aiAnalysis.opportunities?.map(opportunity => (
-                  <li>{opportunity}</li>
-                )) || <li>No opportunities identified</li>}
-              </ul>
-              
-              <h3 class="font-bold text-amber-700 mt-4 mb-2">Threats</h3>
-              <ul class="list-disc pl-5 space-y-1">
-                {aiAnalysis.threats?.map(threat => (
-                  <li>{threat}</li>
-                )) || <li>No threats identified</li>}
-              </ul>
-            </div>
-          </div>
+      <!-- First row: Sentiment Card (1/3) and Trends Chart (2/3) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Left column: Stacked cards -->
+        <div class="space-y-6">
+          <!-- Brand Sentiment Card (now with summary) -->
+          <BrandSentimentCard score={sentimentScore} summary={aiAnalysis?.summary || ''} />
           
-          {aiAnalysis.summary && (
-            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 class="font-bold mb-2">Summary</h3>
-              <p>{aiAnalysis.summary}</p>
-            </div>
-          )}
+          <!-- Domain Metrics Card -->
+          <MozMetricsCard mozData={mozData} />
+
+          <!-- AI Analysis Card -->
+          <AiAnalysisCard analysis={{
+            strengths: aiAnalysis?.strengths || [],
+            weaknesses: aiAnalysis?.weaknesses || [],
+            opportunities: aiAnalysis?.opportunities || [],
+            threats: aiAnalysis?.threats || [],
+            summary: '' // Remove summary from here
+          }} />
         </div>
-      )}
-      
-      <div class="mt-10 p-6 bg-blue-50 rounded-xl">
-        <h2 class="text-2xl font-bold mb-4">Ready for a deeper analysis?</h2>
-        <p class="mb-4">Book a "Greenhouse" discovery meeting with our team to receive your full brand health report.</p>
-        <a href="/schedule-meeting" class="inline-block bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition">
-          Schedule Your Greenhouse Meeting
-        </a>
+        
+        <!-- Middle and right columns: Trends Chart and SERP Results -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Trends Chart -->
+          <TrendsChart trendsData={trendsData} brandName={brandName} />
+          
+          <!-- SERP Results Card -->
+          <SerpResultsCard serpData={serpData} />
+        </div>
       </div>
+      
+      
     </div>
   </main>
 </Layout>

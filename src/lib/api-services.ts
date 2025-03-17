@@ -185,66 +185,98 @@ export async function getGoogleTrendsData(brandName: string) {
     }
   }
   
-  export async function generateAiAnalysis(brandData: any) {
+  export async function generateAiAnalysis(brandData) {
     try {
-      const openaiApiKey = import.meta.env.OPENAI_API_KEY;
-      
-      if (!openaiApiKey) {
-        console.warn('OPENAI_API_KEY not found, returning mock data');
-        return {
-          strengths: ['Strong brand recognition', 'Established market presence', 'Quality product offering'],
-          weaknesses: ['Limited digital presence', 'Inconsistent messaging'],
-          opportunities: ['Digital marketing expansion', 'Social media engagement', 'Content marketing strategy'],
-          threats: ['Increasing competition', 'Changing market trends'],
-          summary: 'This brand has potential for growth with the right digital strategy.'
-        };
+      // Check if OpenAI API key is configured
+      const apiKey = import.meta.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        console.error("OpenAI API key is not configured");
+        return getFallbackAnalysis(brandData.name);
       }
+
+      // Log the data we're sending to OpenAI
+      console.log("Preparing OpenAI analysis with data:", {
+        brandName: brandData.name,
+        sentimentScore: brandData.sentimentScore,
+        domainAuthority: brandData.domainAuthority,
+        newsArticlesCount: brandData.news?.articles?.length || 0,
+        serpResultsCount: brandData.serp?.organicResults?.length || 0
+      });
       
+      // Prepare the prompt with brand data
+      const prompt = `
+        Perform a SWOT analysis for the brand "${brandData.name}" based on the following data:
+        
+        Sentiment Score: ${brandData.sentimentScore}/100
+        Domain Authority: ${brandData.domainAuthority || 'Unknown'}
+        
+        News Articles: ${brandData.news?.articles?.length || 0} articles found
+        ${brandData.news?.articles?.slice(0, 3).map(a => `- ${a.title} (Sentiment: ${a.sentiment || 'neutral'})`).join('\n') || 'No articles available'}
+        
+        Search Results: ${brandData.serp?.organicResults?.length || 0} results found
+        ${brandData.serp?.organicResults?.slice(0, 3).map(r => `- ${r.title}`).join('\n') || 'No search results available'}
+        
+        Provide a comprehensive SWOT analysis with:
+        - Strengths: What advantages does this brand have based on the data?
+        - Weaknesses: What disadvantages or areas of improvement does the brand have?
+        - Opportunities: What external factors could the brand leverage for growth?
+        - Threats: What external factors could harm the brand's performance?
+        
+        Format your response with clear sections for Strengths, Weaknesses, Opportunities, Threats, and a brief Summary.
+      `;
+
+      console.log("Calling OpenAI API with prompt length:", prompt.length);
+      
+      // Call OpenAI API
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-3.5-turbo', // You can use 'gpt-4' for better results if available
           messages: [
             {
               role: 'system',
-              content: 'You are a brand analysis expert. Create a concise SWOT analysis based on the provided brand data.'
+              content: 'You are a brand analysis expert who provides concise, data-driven SWOT analyses.'
             },
             {
               role: 'user',
-              content: `Generate a SWOT analysis for ${brandData.name}. Here's the data: ${JSON.stringify(brandData)}`
+              content: prompt
             }
           ],
           temperature: 0.7,
-          response_format: { type: "json_object" }
+          max_tokens: 1000
         })
       });
-      
+
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        console.error("OpenAI API error:", response.status, errorData);
+        throw new Error(`OpenAI API error: ${response.status} ${JSON.stringify(errorData)}`);
       }
-      
+
       const data = await response.json();
-      const content = data.choices[0]?.message?.content;
+      console.log("OpenAI API response received");
       
-      if (!content) {
-        throw new Error('Empty response from OpenAI');
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error("Unexpected API response format:", data);
+        return getFallbackAnalysis(brandData.name);
       }
       
-      // Parse the JSON response
-      return JSON.parse(content);
+      const analysisText = data.choices[0].message.content || '';
+      console.log("Raw OpenAI response text:", analysisText);
+      
+      // Parse the analysis text into structured data
+      return parseAnalysisText(analysisText);
     } catch (error) {
-      console.error('Error generating AI analysis:', error);
-      return {
-        strengths: ['Unable to analyze strengths due to API error'],
-        weaknesses: ['Unable to analyze weaknesses due to API error'],
-        opportunities: ['Unable to analyze opportunities due to API error'],
-        threats: ['Unable to analyze threats due to API error'],
-        summary: 'We encountered an error analyzing this brand. Please try again later.'
-      };
+      console.error("Error generating AI analysis:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      return getFallbackAnalysis(brandData.name);
     }
   }
 
@@ -331,4 +363,159 @@ export async function getGoogleTrendsData(brandName: string) {
     }
     
     return [...new Set(competitors)].slice(0, 5); // Return up to 5 unique competitors
+  }
+
+  // Helper function to parse the analysis text into structured data
+  function parseAnalysisText(text) {
+    try {
+      console.log("Starting to parse analysis text:", text.substring(0, 100) + "...");
+      
+      const sections = {
+        strengths: [],
+        weaknesses: [],
+        opportunities: [],
+        threats: [],
+        summary: ''
+      };
+      
+      // Extract strengths
+      const strengthsMatch = text.match(/Strengths:?\s*([\s\S]*?)(?=Weaknesses:|$)/i);
+      console.log("Strengths match:", strengthsMatch ? "Found" : "Not found");
+      if (strengthsMatch && strengthsMatch[1]) {
+        const strengthsText = strengthsMatch[1];
+        console.log("Raw strengths text:", strengthsText);
+        
+        // Try different bullet point patterns
+        let strengthLines = strengthsText.split('\n')
+          .filter(line => line.trim().startsWith('-') || 
+                          line.trim().startsWith('•') || 
+                          line.trim().startsWith('*') ||
+                          /^\d+\./.test(line.trim()))
+          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
+          .filter(line => line);
+        
+        // If no bullet points found, try to split by newlines
+        if (strengthLines.length === 0) {
+          strengthLines = strengthsText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.toLowerCase().includes('strengths'));
+        }
+        
+        sections.strengths = strengthLines;
+        console.log("Parsed strengths:", sections.strengths);
+      }
+      
+      // Extract weaknesses (similar approach)
+      const weaknessesMatch = text.match(/Weaknesses:?\s*([\s\S]*?)(?=Opportunities:|$)/i);
+      console.log("Weaknesses match:", weaknessesMatch ? "Found" : "Not found");
+      if (weaknessesMatch && weaknessesMatch[1]) {
+        const weaknessesText = weaknessesMatch[1];
+        
+        let weaknessLines = weaknessesText.split('\n')
+          .filter(line => line.trim().startsWith('-') || 
+                          line.trim().startsWith('•') || 
+                          line.trim().startsWith('*') ||
+                          /^\d+\./.test(line.trim()))
+          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
+          .filter(line => line);
+        
+        if (weaknessLines.length === 0) {
+          weaknessLines = weaknessesText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.toLowerCase().includes('weaknesses'));
+        }
+        
+        sections.weaknesses = weaknessLines;
+      }
+      
+      // Extract opportunities (similar approach)
+      const opportunitiesMatch = text.match(/Opportunities:?\s*([\s\S]*?)(?=Threats:|$)/i);
+      console.log("Opportunities match:", opportunitiesMatch ? "Found" : "Not found");
+      if (opportunitiesMatch && opportunitiesMatch[1]) {
+        const opportunitiesText = opportunitiesMatch[1];
+        
+        let opportunityLines = opportunitiesText.split('\n')
+          .filter(line => line.trim().startsWith('-') || 
+                          line.trim().startsWith('•') || 
+                          line.trim().startsWith('*') ||
+                          /^\d+\./.test(line.trim()))
+          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
+          .filter(line => line);
+        
+        if (opportunityLines.length === 0) {
+          opportunityLines = opportunitiesText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.toLowerCase().includes('opportunities'));
+        }
+        
+        sections.opportunities = opportunityLines;
+      }
+      
+      // Extract threats (similar approach)
+      const threatsMatch = text.match(/Threats:?\s*([\s\S]*?)(?=Summary:|$)/i);
+      console.log("Threats match:", threatsMatch ? "Found" : "Not found");
+      if (threatsMatch && threatsMatch[1]) {
+        const threatsText = threatsMatch[1];
+        
+        let threatLines = threatsText.split('\n')
+          .filter(line => line.trim().startsWith('-') || 
+                          line.trim().startsWith('•') || 
+                          line.trim().startsWith('*') ||
+                          /^\d+\./.test(line.trim()))
+          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
+          .filter(line => line);
+        
+        if (threatLines.length === 0) {
+          threatLines = threatsText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.toLowerCase().includes('threats'));
+        }
+        
+        sections.threats = threatLines;
+      }
+      
+      // Extract summary
+      const summaryMatch = text.match(/Summary:?\s*([\s\S]*?)$/i);
+      console.log("Summary match:", summaryMatch ? "Found" : "Not found");
+      if (summaryMatch && summaryMatch[1]) {
+        sections.summary = summaryMatch[1].trim();
+      } else {
+        // If no explicit summary section, use the last paragraph
+        const paragraphs = text.split('\n\n');
+        const lastParagraph = paragraphs[paragraphs.length - 1].trim();
+        if (lastParagraph && !lastParagraph.match(/^(Strengths|Weaknesses|Opportunities|Threats):/i)) {
+          sections.summary = lastParagraph;
+        }
+      }
+      
+      console.log("Final parsed sections:", {
+        strengthsCount: sections.strengths.length,
+        weaknessesCount: sections.weaknesses.length,
+        opportunitiesCount: sections.opportunities.length,
+        threatsCount: sections.threats.length,
+        summaryLength: sections.summary.length
+      });
+      
+      return sections;
+    } catch (error) {
+      console.error("Error parsing analysis text:", error);
+      return {
+        strengths: [],
+        weaknesses: [],
+        opportunities: [],
+        threats: [],
+        summary: "Error parsing analysis."
+      };
+    }
+  }
+
+  // Fallback analysis when API fails
+  function getFallbackAnalysis(brandName) {
+    return {
+      strengths: ["Unable to analyze strengths due to API error"],
+      weaknesses: ["Unable to analyze weaknesses due to API error"],
+      opportunities: ["Unable to analyze opportunities due to API error"],
+      threats: ["Unable to analyze threats due to API error"],
+      summary: "We encountered an error analyzing this brand. Please try again later."
+    };
   }

@@ -1,0 +1,161 @@
+---
+// Moz Metrics Card Component
+const { mozData = {} } = Astro.props;
+
+// Extract metrics from Moz data
+const domainAuthority = mozData.domainAuthority || 0;
+const pageAuthority = mozData.pageAuthority || 0;
+const spamScore = mozData.spamScore || 0;
+const linkMetrics = mozData.linkMetrics || {};
+
+// Helper function to determine authority level
+function getAuthorityLevel(score) {
+  if (score > 60) return { label: 'Excellent', color: 'text-green-600' };
+  if (score > 40) return { label: 'Good', color: 'text-blue-600' };
+  if (score > 20) return { label: 'Moderate', color: 'text-yellow-600' };
+  return { label: 'Developing', color: 'text-gray-600' };
+}
+
+const daLevel = getAuthorityLevel(domainAuthority);
+const paLevel = getAuthorityLevel(pageAuthority);
+
+// Format spam score as percentage
+const spamScorePercent = Math.min(100, Math.max(0, spamScore));
+const isLowSpam = spamScorePercent < 30;
+---
+
+<div class="bg-white p-6 rounded-xl shadow-md">
+  <h2 class="text-xl font-semibold mb-4">Domain Metrics</h2>
+  
+  <div class="grid grid-cols-2 gap-4 mb-6">
+    <!-- Domain Authority -->
+    <div class="bg-gray-50 p-4 rounded-lg">
+      <p class="text-sm text-gray-500 mb-1">Domain Authority</p>
+      <div class="flex items-center">
+        <div class="relative h-16 w-16 mr-3">
+          <svg class="w-full h-full" viewBox="0 0 36 36">
+            <path class="circle-bg"
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="#eee"
+              stroke-width="3"
+            />
+            <path class="circle-progress"
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-dasharray={`${domainAuthority}, 100`}
+              class={daLevel.color}
+            />
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center text-lg font-bold">
+            {domainAuthority}
+          </div>
+        </div>
+        <div>
+          <p class={`font-medium ${daLevel.color}`}>{daLevel.label}</p>
+          <p class="text-xs text-gray-500">Moz Score</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Page Authority -->
+    <div class="bg-gray-50 p-4 rounded-lg">
+      <p class="text-sm text-gray-500 mb-1">Page Authority</p>
+      <div class="flex items-center">
+        <div class="relative h-16 w-16 mr-3">
+          <svg class="w-full h-full" viewBox="0 0 36 36">
+            <path class="circle-bg"
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="#eee"
+              stroke-width="3"
+            />
+            <path class="circle-progress"
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-dasharray={`${pageAuthority}, 100`}
+              class={paLevel.color}
+            />
+          </svg>
+          <div class="absolute inset-0 flex items-center justify-center text-lg font-bold">
+            {pageAuthority}
+          </div>
+        </div>
+        <div>
+          <p class={`font-medium ${paLevel.color}`}>{paLevel.label}</p>
+          <p class="text-xs text-gray-500">Moz Score</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Spam Score -->
+  <div class="mb-6">
+    <div class="flex justify-between mb-1">
+      <p class="text-sm text-gray-500">Spam Score</p>
+      <p class="text-sm font-medium">{spamScorePercent}%</p>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-2.5">
+      <div 
+        class={`h-2.5 rounded-full ${isLowSpam ? 'bg-green-500' : 'bg-red-500'}`}
+        style={`width: ${spamScorePercent}%`}
+      ></div>
+    </div>
+    <p class="text-xs mt-1 text-gray-500">
+      {isLowSpam ? 'Low spam risk' : 'High spam risk - review your SEO practices'}
+    </p>
+  </div>
+  
+  <!-- Link Metrics -->
+  {linkMetrics && (
+    <div>
+      <h3 class="text-sm font-medium text-gray-700 mb-2">Link Metrics</h3>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div class="bg-gray-50 p-2 rounded">
+          <p class="text-xs text-gray-500">Total Links</p>
+          <p class="font-medium">{linkMetrics.total_links || 'N/A'}</p>
+        </div>
+        <div class="bg-gray-50 p-2 rounded">
+          <p class="text-xs text-gray-500">External Links</p>
+          <p class="font-medium">{linkMetrics.external_links || 'N/A'}</p>
+        </div>
+        <div class="bg-gray-50 p-2 rounded">
+          <p class="text-xs text-gray-500">Followed Links</p>
+          <p class="font-medium">{linkMetrics.followed_links || 'N/A'}</p>
+        </div>
+        <div class="bg-gray-50 p-2 rounded">
+          <p class="text-xs text-gray-500">Linking Domains</p>
+          <p class="font-medium">{linkMetrics.linking_domains || 'N/A'}</p>
+        </div>
+      </div>
+    </div>
+  )}
+  
+  <!-- Error State -->
+  {mozData.error && (
+    <div class="bg-red-50 p-4 rounded-lg text-red-800 mt-4">
+      <p class="font-medium">Error fetching Moz data</p>
+      <p class="text-sm">{mozData.error}</p>
+    </div>
+  )}
+</div>
+
+<style>
+  .circle-progress {
+    stroke-dashoffset: 0;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+</style> 
