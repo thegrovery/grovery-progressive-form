@@ -185,7 +185,7 @@ export async function getGoogleTrendsData(brandName: string) {
     }
   }
   
-  export async function generateAiAnalysis(brandData) {
+  export async function generateAiAnalysis(brandData: any) {
     try {
       // Check if OpenAI API key is configured
       const apiKey = import.meta.env.OPENAI_API_KEY;
@@ -211,10 +211,10 @@ export async function getGoogleTrendsData(brandName: string) {
         Domain Authority: ${brandData.domainAuthority || 'Unknown'}
         
         News Articles: ${brandData.news?.articles?.length || 0} articles found
-        ${brandData.news?.articles?.slice(0, 3).map(a => `- ${a.title} (Sentiment: ${a.sentiment || 'neutral'})`).join('\n') || 'No articles available'}
+        ${brandData.news?.articles?.slice(0, 3).map((a: any) => `- ${a.title} (Sentiment: ${a.sentiment || 'neutral'})`).join('\n') || 'No articles available'}
         
         Search Results: ${brandData.serp?.organicResults?.length || 0} results found
-        ${brandData.serp?.organicResults?.slice(0, 3).map(r => `- ${r.title}`).join('\n') || 'No search results available'}
+        ${brandData.serp?.organicResults?.slice(0, 3).map((r: any) => `- ${r.title}`) || 'No search results available'}
         
         Provide a comprehensive SWOT analysis with:
         - Strengths: What advantages does this brand have based on the data?
@@ -366,7 +366,7 @@ export async function getGoogleTrendsData(brandName: string) {
   }
 
   // Helper function to parse the analysis text into structured data
-  function parseAnalysisText(text) {
+  function parseAnalysisText(text: string) {
     try {
       console.log("Starting to parse analysis text:", text.substring(0, 100) + "...");
       
@@ -387,7 +387,7 @@ export async function getGoogleTrendsData(brandName: string) {
         
         // Try different bullet point patterns
         let strengthLines = strengthsText.split('\n')
-          .filter(line => line.trim().startsWith('-') || 
+          .filter((line: string) => line.trim().startsWith('-') || 
                           line.trim().startsWith('•') || 
                           line.trim().startsWith('*') ||
                           /^\d+\./.test(line.trim()))
@@ -397,11 +397,11 @@ export async function getGoogleTrendsData(brandName: string) {
         // If no bullet points found, try to split by newlines
         if (strengthLines.length === 0) {
           strengthLines = strengthsText.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.toLowerCase().includes('strengths'));
+            .map((line: string) => line.trim())
+            .filter((line: string) => line && !line.toLowerCase().includes('strengths'));
         }
         
-        sections.strengths = strengthLines;
+        sections.strengths = strengthLines as any;
         console.log("Parsed strengths:", sections.strengths);
       }
       
@@ -412,7 +412,7 @@ export async function getGoogleTrendsData(brandName: string) {
         const weaknessesText = weaknessesMatch[1];
         
         let weaknessLines = weaknessesText.split('\n')
-          .filter(line => line.trim().startsWith('-') || 
+          .filter((line: string) => line.trim().startsWith('-') || 
                           line.trim().startsWith('•') || 
                           line.trim().startsWith('*') ||
                           /^\d+\./.test(line.trim()))
@@ -425,7 +425,7 @@ export async function getGoogleTrendsData(brandName: string) {
             .filter(line => line && !line.toLowerCase().includes('weaknesses'));
         }
         
-        sections.weaknesses = weaknessLines;
+        sections.weaknesses = weaknessLines as any;
       }
       
       // Extract opportunities (similar approach)
@@ -448,7 +448,7 @@ export async function getGoogleTrendsData(brandName: string) {
             .filter(line => line && !line.toLowerCase().includes('opportunities'));
         }
         
-        sections.opportunities = opportunityLines;
+        sections.opportunities = opportunityLines as any;
       }
       
       // Extract threats (similar approach)
@@ -471,7 +471,7 @@ export async function getGoogleTrendsData(brandName: string) {
             .filter(line => line && !line.toLowerCase().includes('threats'));
         }
         
-        sections.threats = threatLines;
+        sections.threats = threatLines as any;
       }
       
       // Extract summary
@@ -510,7 +510,7 @@ export async function getGoogleTrendsData(brandName: string) {
   }
 
   // Fallback analysis when API fails
-  function getFallbackAnalysis(brandName) {
+  function getFallbackAnalysis(brandName: string) {
     return {
       strengths: ["Unable to analyze strengths due to API error"],
       weaknesses: ["Unable to analyze weaknesses due to API error"],
@@ -518,4 +518,75 @@ export async function getGoogleTrendsData(brandName: string) {
       threats: ["Unable to analyze threats due to API error"],
       summary: "We encountered an error analyzing this brand. Please try again later."
     };
+  }
+
+  // Calculate sentiment score based on multiple factors
+  export function calculateSentimentScore(brandData: any) {
+    // Base weights for different factors
+    const weights = {
+      newsSentiment: 0.3,
+      searchPosition: 0.3,
+      domainAuthority: 0.2,
+      serpFeatures: 0.2
+    };
+    
+    // Initialize score components
+    let newsScore = 50; // Neutral default
+    let searchScore = 0;
+    let domainScore = 0;
+    let serpScore = 0;
+    
+    // Calculate news sentiment score (0-100)
+    if (brandData.news && brandData.news.articles) {
+      const articles = brandData.news.articles;
+      if (articles.length > 0) {
+        // Count sentiment distribution
+        const sentiments = articles.map((a: any) => a.sentiment || 'neutral');
+        const positiveCount = sentiments.filter((s: any) => s === 'positive').length;
+        const neutralCount = sentiments.filter((s: any) => s === 'neutral').length;
+        const negativeCount = sentiments.filter((s: any) => s === 'negative').length;
+        
+        // Calculate weighted score (positive=100, neutral=50, negative=0)
+        const totalArticles = articles.length;
+        newsScore = totalArticles > 0 
+          ? ((positiveCount * 100) + (neutralCount * 50) + (negativeCount * 0)) / totalArticles
+          : 50;
+      }
+    }
+    
+    // Calculate search position score (0-100)
+    if (brandData.serp && brandData.serp.organic_results && brandData.serp.organic_results.length > 0) {
+      const topPosition = brandData.serp.organic_results[0].position || 10;
+      // Position 1 = 100, Position 10+ = 0
+      searchScore = Math.max(0, 100 - ((topPosition - 1) * 10));
+    }
+    
+    // Calculate domain authority score (0-100)
+    if (brandData.domainAuthority) {
+      // Scale domain authority (typically 0-100) directly
+      domainScore = brandData.domainAuthority;
+    }
+    
+    // Calculate SERP features score (0-100)
+    if (brandData.serp) {
+      let featuresScore = 0;
+      // Add points for each SERP feature
+      if (brandData.serp.answer_box) featuresScore += 25;
+      if (brandData.serp.knowledge_graph) featuresScore += 25;
+      if (brandData.serp.local_results && brandData.serp.local_results.length > 0) featuresScore += 25;
+      if (brandData.serp.related_questions && brandData.serp.related_questions.length > 0) featuresScore += 15;
+      if (brandData.serp.related_searches && brandData.serp.related_searches.length > 0) featuresScore += 10;
+      
+      serpScore = Math.min(100, featuresScore);
+    }
+    
+    // Calculate weighted average
+    const weightedScore = 
+      (newsScore * weights.newsSentiment) +
+      (searchScore * weights.searchPosition) +
+      (domainScore * weights.domainAuthority) +
+      (serpScore * weights.serpFeatures);
+    
+    // Round to nearest integer
+    return Math.round(weightedScore);
   }

@@ -140,7 +140,7 @@ import LoadingOverlay from './LoadingOverlay.astro';
     </div>
 
     <!-- Use the LoadingOverlay component instead of hard-coding -->
-    <LoadingOverlay id="form-loading-overlay" isLoading={false} client:load />
+    <LoadingOverlay id="form-loading-overlay" isLoading={false}  />
   </form>
 </div>
 
@@ -196,7 +196,7 @@ import LoadingOverlay from './LoadingOverlay.astro';
       
       if (validateStep(4)) {
         try {
-          const formData = new FormData(form);
+          const formData = new FormData(form as HTMLFormElement);
           const data = {
             brandName: formData.get('brandName'),
             name: formData.get('yourName'),
@@ -225,7 +225,7 @@ import LoadingOverlay from './LoadingOverlay.astro';
           console.log('Form data (HubSpot disabled for testing):', data);
           
           // Redirect to dashboard with form submission parameter after a short delay
-          window.location.href = `/dashboard/${encodeURIComponent(data.brandName)}?formSubmitted=true`;
+          window.location.href = `/dashboard/${encodeURIComponent(String(data.brandName || ''))}?formSubmitted=true`;
         } catch (error) {
           console.error('Error submitting form:', error);
           alert('There was an error submitting your form. Please try again.');
@@ -233,7 +233,7 @@ import LoadingOverlay from './LoadingOverlay.astro';
       }
     });
 
-    function showStep(step) {
+    function showStep(step: number) {
       // First hide all steps immediately
       steps.forEach((stepEl) => {
         stepEl?.classList.add('hidden');
@@ -251,7 +251,7 @@ import LoadingOverlay from './LoadingOverlay.astro';
           // Auto-focus the first input field in this step
           const firstInput = targetStep.querySelector('input, select, textarea');
           if (firstInput) {
-            firstInput.focus();
+            (firstInput as HTMLInputElement).focus();
           }
         }, 10);
       }
@@ -262,11 +262,11 @@ import LoadingOverlay from './LoadingOverlay.astro';
       }
     }
 
-    function validateStep(step) {
+    function validateStep(step: number) {
       let valid = true;
       
       // Remove any existing error messages
-      document.querySelectorAll('.error-message').forEach(el => el.remove());
+      document.querySelectorAll('.error-message').forEach(el => (el as HTMLElement).remove());
       
       // Implement validation for each step
       if (step === 1) {
@@ -303,21 +303,21 @@ import LoadingOverlay from './LoadingOverlay.astro';
       return valid;
     }
     
-    function isValidEmail(email) {
+    function isValidEmail(email: string) {
       const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return re.test(email);
     }
     
-    function displayError(inputElement, message) {
+    function displayError(inputElement: HTMLElement, message: string) {
       // Remove any existing error for this input
       const parent = inputElement.parentElement;
-      parent.querySelectorAll('.error-message').forEach(el => el.remove());
+      parent?.querySelectorAll('.error-message').forEach(el => (el as HTMLElement).remove());
       
       // Add new error message
       const errorDiv = document.createElement('div');
       errorDiv.className = 'error-message text-red-500 text-sm mt-1';
       errorDiv.innerText = message;
-      parent.appendChild(errorDiv);
+      parent?.appendChild(errorDiv);
       
       // Highlight the input
       inputElement.classList.add('border-red-500', 'focus:ring-red-500');
@@ -325,7 +325,7 @@ import LoadingOverlay from './LoadingOverlay.astro';
       // Remove highlighting when user starts typing
       inputElement.addEventListener('input', function() {
         this.classList.remove('border-red-500', 'focus:ring-red-500');
-        parent.querySelectorAll('.error-message').forEach(el => el.remove());
+        parent?.querySelectorAll('.error-message').forEach(el => (el as HTMLElement).remove());
       }, { once: true });
     }
     
@@ -353,7 +353,9 @@ import LoadingOverlay from './LoadingOverlay.astro';
             } else if (currentStep === 4) {
               // For the last step, trigger form submission
               const submitBtn = document.querySelector('button[type="submit"]');
-              submitBtn?.click();
+              if (submitBtn && submitBtn instanceof HTMLButtonElement) {
+                submitBtn.click();
+              }
             }
           }
         });

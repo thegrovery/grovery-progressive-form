@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getNewsData, getSerpData, generateAiAnalysis } from '../../lib/api-services';
+import { getNewsData, getSerpData, generateAiAnalysis, calculateSentimentScore } from '../../lib/api-services';
 import { fetchMozDomainAuthority } from '../../lib/moz-api';
 import { fetchSerpResults } from '../../lib/serp-api';
 import BrandSentimentCard from '../../components/dashboard/BrandSentimentCard.astro';
@@ -51,65 +51,20 @@ try {
     hasRelatedQuestions: !!serpData.related_questions
   });
   
-  // 1. News sentiment (if available)
-  const newsSentiment = newsData.articles?.length 
-    ? Math.round((newsData.articles.reduce((sum, article) => sum + (article.sentiment_score || 0), 0) / newsData.articles.length) * 100)
-    : null;
-  
-  // 2. Domain authority contribution (if available)
-  const domainAuthority = mozData.domainAuthority || 0;
-  
-  // 3. SERP features contribution
-  let serpScore = 50;
-  if (serpData.organic_results?.length) {
-    // Higher score for better SERP positioning
-    const hasTopPosition = serpData.organic_results[0]?.position <= 3;
-    const hasFeaturedSnippet = !!serpData.answer_box;
-    const hasKnowledgePanel = !!serpData.knowledge_graph;
-    
-    // Calculate SERP score based on features
-    serpScore = 50;
-    if (hasTopPosition) serpScore += 15;
-    if (hasFeaturedSnippet) serpScore += 10;
-    if (hasKnowledgePanel) serpScore += 10;
-    if (serpData.organic_results.length > 5) serpScore += 5;
-    
-    // Cap at 100
-    serpScore = Math.min(100, serpScore);
-  }
-  
-  // Combine all scores with weights
-  const scores = [];
-  const weights = [];
-  
-  if (newsSentiment !== null) {
-    scores.push(newsSentiment);
-    weights.push(0.4); // 40% weight to news sentiment
-  }
-  
-  if (domainAuthority > 0) {
-    scores.push(domainAuthority);
-    weights.push(0.3); // 30% weight to domain authority
-  }
-  
-  scores.push(serpScore);
-  weights.push(0.3); // 30% weight to SERP features
-  
-  // Calculate weighted average
-  if (scores.length > 0) {
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    sentimentScore = Math.round(
-      scores.reduce((sum, score, index) => sum + (score * weights[index]), 0) / totalWeight
-    );
-  }
-  
-  console.log("Calculated sentiment score:", sentimentScore, "based on scores:", scores, "with weights:", weights);
+  // Calculate sentiment score using the new function
+  sentimentScore = calculateSentimentScore({
+    news: newsData,
+    serp: serpData,
+    domainAuthority: typeof mozData === 'object' && mozData !== null ? 
+      (mozData as any).domainAuthority || 0 : 0
+  });
   
   // Generate AI analysis with all the data
   aiAnalysis = await generateAiAnalysis({
     name: brandName,
     sentimentScore,
-    domainAuthority: mozData.domainAuthority || 0,
+    domainAuthority: typeof mozData === 'object' && mozData !== null ? 
+      (mozData as any).domainAuthority || 0 : 0,
     news: newsData,
     serp: serpData
   });

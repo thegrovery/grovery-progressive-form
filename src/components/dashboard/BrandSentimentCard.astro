@@ -5,15 +5,18 @@ const { score = 50, summary = '' } = Astro.props;
 // Determine color based on score
 let color = 'text-yellow-500';
 let bgColor = 'from-yellow-500';
+let strokeColor = 'stroke-yellow-500';
 let label = 'Neutral';
 
 if (score >= 70) {
   color = 'text-green-500';
   bgColor = 'from-green-500';
+  strokeColor = 'stroke-green-500';
   label = 'Positive';
 } else if (score <= 30) {
   color = 'text-red-500';
   bgColor = 'from-red-500';
+  strokeColor = 'stroke-red-500';
   label = 'Negative';
 }
 
@@ -21,6 +24,11 @@ if (score >= 70) {
 const positivePercent = Math.min(100, Math.max(0, score));
 const neutralPercent = Math.min(100, Math.max(0, 100 - Math.abs(score - 50) * 2));
 const negativePercent = Math.min(100, Math.max(0, 100 - score));
+
+// Calculate the circle's circumference and stroke-dashoffset
+const radius = 45;
+const circumference = 2 * Math.PI * radius;
+const dashOffset = circumference - (circumference * score / 100);
 
 // Clean up summary text - remove asterisks, "Summary:", and other markdown formatting
 const cleanSummary = summary
@@ -48,7 +56,7 @@ const cleanSummary = summary
           fill="none" 
           stroke="#f0f0f0" 
           stroke-width="10"
-          stroke-dasharray="283"
+          stroke-dasharray={circumference}
           stroke-dashoffset="0"
           transform="rotate(-90 50 50)"
         />
@@ -58,10 +66,10 @@ const cleanSummary = summary
           cy="50" 
           r="45" 
           fill="none" 
-          stroke={color.replace('text-', 'stroke-')} 
+          class={strokeColor}
           stroke-width="10"
-          stroke-dasharray="283"
-          stroke-dashoffset={`${283 - (283 * score / 100)}`}
+          stroke-dasharray={circumference}
+          stroke-dashoffset={dashOffset}
           transform="rotate(-90 50 50)"
           stroke-linecap="round"
         />
@@ -104,7 +112,7 @@ const cleanSummary = summary
     </div>
   </div>
   
-  <!-- Summary Section (New) -->
+  <!-- Summary Section -->
   {cleanSummary && (
     <div class="mt-4 pt-4 border-t border-gray-200">
       <h3 class="text-sm font-medium mb-2">Brand Summary</h3>

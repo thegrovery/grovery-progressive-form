@@ -67,11 +67,22 @@ const useMockData = timelineData.length === 0;
 </div>
 
 <script>
-  // Client-side script to initialize the chart using Chart.js
   import Chart from 'chart.js/auto';
+  import { CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+  
+  // Register the components we need
+  Chart.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+  );
   
   document.addEventListener('DOMContentLoaded', () => {
-    // Find all trend charts on the page
     document.querySelectorAll('canvas[id^="trends-chart-"]').forEach((canvas: Element) => {
       const canvasElement = canvas as HTMLCanvasElement;
       const ctx = canvasElement.getContext('2d');
@@ -80,49 +91,51 @@ const useMockData = timelineData.length === 0;
       const brandName = canvasElement.dataset.brand || '';
       const isMock = canvasElement.dataset.mock === 'true';
       
-      new Chart(ctx!, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: `Interest in "${brandName}"`,
-            data: values,
-            borderColor: isMock ? 'rgb(245, 158, 11)' : 'rgb(59, 130, 246)',
-            backgroundColor: isMock ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-            tension: 0.3,
-            fill: true
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              title: {
-                display: true,
-                text: 'Search Interest'
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              }
-            }
+      if (ctx) {  // Add null check for ctx
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: `Interest in "${brandName}"`,
+              data: values,
+              borderColor: isMock ? 'rgb(245, 158, 11)' : 'rgb(59, 130, 246)',
+              backgroundColor: isMock ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+              tension: 0.3,
+              fill: true
+            }]
           },
-          plugins: {
-            tooltip: {
-              mode: 'index',
-              intersect: false
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                  display: true,
+                  text: 'Search Interest'
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                }
+              }
             },
-            legend: {
-              display: true,
-              position: 'top'
+            plugins: {
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              },
+              legend: {
+                display: true,
+                position: 'top'
+              }
             }
           }
-        }
-      });
+        });
+      }
     });
   });
 </script> 

@@ -10,7 +10,7 @@ const newsData = await getNewsData(brandName);
 // Calculate sentiment score (simple example)
 const sentimentScore = calculateSentiment(serpData, newsData);
 
-function calculateSentiment(serp, news) {
+function calculateSentiment(serp: any, news: any) {
   // Algorithm to calculate sentiment
   return Math.floor(Math.random() * 100); // Placeholder
 }

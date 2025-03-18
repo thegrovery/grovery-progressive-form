@@ -1,5 +1,5 @@
 // SerpAPI integration
-export async function fetchSerpResults(query, options = {}) {
+export async function fetchSerpResults(query: string, options: Record<string, any> = {}): Promise<SerpData> {
   try {
     const apiKey = import.meta.env.SERP_API_KEY;
     
@@ -53,7 +53,7 @@ export async function fetchSerpResults(query, options = {}) {
 }
 
 // Fallback function to generate mock SERP data
-function getMockSerpData(query) {
+function getMockSerpData(query: string) {
   const cleanQuery = query.toLowerCase().trim();
   
   return {
@@ -151,6 +151,7 @@ interface SerpData {
   organic_results?: any[];
   knowledge_graph?: any;
   related_questions?: any[];
+  error?: string;
 }
 
 export type { SerpData }; 

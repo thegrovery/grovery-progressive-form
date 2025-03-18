@@ -9,7 +9,7 @@ const spamScore = mozData.spamScore || 0;
 const linkMetrics = mozData.linkMetrics || {};
 
 // Helper function to determine authority level
-function getAuthorityLevel(score) {
+function getAuthorityLevel(score: number) {
   if (score > 60) return { label: 'Excellent', color: 'text-green-600' };
   if (score > 40) return { label: 'Good', color: 'text-blue-600' };
   if (score > 20) return { label: 'Moderate', color: 'text-yellow-600' };

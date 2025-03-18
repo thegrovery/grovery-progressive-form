@@ -11,7 +11,7 @@ const summary = analysis.summary || '';
 const hasError = strengths.length === 1 && strengths[0].includes('API error');
 
 // Helper function to clean up markdown bullet points and filter empty items
-function cleanMarkdown(text) {
+function cleanMarkdown(text: string) {
   if (!text) return '';
   
   // Remove leading asterisks, dots, or dashes that might be part of markdown
@@ -19,10 +19,10 @@ function cleanMarkdown(text) {
 }
 
 // Filter out empty items and clean markdown
-function processItems(items) {
+function processItems(items: any) {
   return items
-    .map(item => cleanMarkdown(item))
-    .filter(item => item && item.length > 1); // Filter out empty or single-character items
+    .map((item: any) => cleanMarkdown(item))
+    .filter((item: any) => item && item.length > 1); // Filter out empty or single-character items
 }
 
 // Process all sections
@@ -41,7 +41,7 @@ const cleanThreats = processItems(threats);
       <div>
         <h3 class="text-green-600 font-medium mb-2">Strengths</h3>
         <ul class="list-disc pl-5 space-y-1">
-          {cleanStrengths.map(strength => {
+          {cleanStrengths.map((strength: any) => {
             // Split by colon to handle "Title: Description" format
             const parts = strength.split(/:\s*/);
             return (
@@ -63,7 +63,7 @@ const cleanThreats = processItems(threats);
       <div>
         <h3 class="text-red-600 font-medium mb-2">Weaknesses</h3>
         <ul class="list-disc pl-5 space-y-1">
-          {cleanWeaknesses.map(weakness => {
+          {cleanWeaknesses.map((weakness: any) => {
             const parts = weakness.split(/:\s*/);
             return (
               <li class="text-sm">
@@ -84,7 +84,7 @@ const cleanThreats = processItems(threats);
       <div>
         <h3 class="text-blue-600 font-medium mb-2">Opportunities</h3>
         <ul class="list-disc pl-5 space-y-1">
-          {cleanOpportunities.map(opportunity => {
+          {cleanOpportunities.map((opportunity: any) => {
             const parts = opportunity.split(/:\s*/);
             return (
               <li class="text-sm">
@@ -105,7 +105,7 @@ const cleanThreats = processItems(threats);
       <div>
         <h3 class="text-orange-600 font-medium mb-2">Threats</h3>
         <ul class="list-disc pl-5 space-y-1">
-          {cleanThreats.map(threat => {
+          {cleanThreats.map((threat: any) => {
             const parts = threat.split(/:\s*/);
             return (
               <li class="text-sm">

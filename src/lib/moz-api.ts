@@ -1,5 +1,5 @@
 // Moz API integration
-export async function fetchMozDomainAuthority(brandName) {
+export async function fetchMozDomainAuthority(brandName: string) {
   try {
     // Get API key from environment variables
     const apiKey = import.meta.env.MOZ_API_KEY;
@@ -69,17 +69,17 @@ export async function fetchMozDomainAuthority(brandName) {
     };
   } catch (error) {
     console.error("Error fetching Moz data:", error);
-    return { error: error.message, domainAuthority: 0 };
+    return { error: (error as Error).message, domainAuthority: 0 };
   }
 }
 
 // Fallback function to generate realistic mock data when API fails
-function getMockDomainAuthority(domain) {
+function getMockDomainAuthority(domain: string) {
   // Extract the domain name without protocol and TLD
   const domainName = domain.replace(/^https?:\/\//, '').split('.')[0];
   
   // Generate a consistent but random-looking domain authority based on domain name
-  const seed = domainName.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const seed = domainName.split('').reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
   const randomFactor = (seed % 50) / 100; // Between 0 and 0.5
   
   // Popular domains tend to have higher DA
