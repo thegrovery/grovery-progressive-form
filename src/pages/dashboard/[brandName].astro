@@ -9,6 +9,7 @@ import MozMetricsCard from '../../components/dashboard/MozMetricsCard.astro';
 import SerpResultsCard from '../../components/dashboard/SerpResultsCard.astro';
 import AiAnalysisCard from '../../components/dashboard/AiAnalysisCard.astro';
 import CallToAction from '../../components/dashboard/CallToAction.astro';
+import GeographicalInsightsCard from '../../components/dashboard/GeographicalInsightsCard.astro';
 import type { SerpData } from '../../lib/serp-api';
 
 // Get brand name from URL params
@@ -108,6 +109,9 @@ try {
           
           <!-- SERP Results Card -->
           <SerpResultsCard serpData={serpData} />
+          
+          <!-- Geographical Insights Card -->
+          <GeographicalInsightsCard brandName={brandName} />
 
            <!-- Call to Action -->
            <CallToAction brandName={brandName} />
