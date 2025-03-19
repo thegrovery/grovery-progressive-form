@@ -1,6 +1,7 @@
 ---
 // Geographical Insights Card Component
 import { getBrandLocationInsights } from '../../lib/serpwow-api';
+import { isProbablyMedication } from '../../lib/brand-utils';
 
 const { brandName = '' } = Astro.props;
 
@@ -16,21 +17,11 @@ const mockLocationData = [
   { name: "Japan", fullName: "Japan", countryCode: "JP", type: "country", reach: 40, coordinates: [36.2048, 138.2529] }
 ];
 
-// Use real API data if available, otherwise fall back to mock data
-let locationInsights = [];
-try {
-  locationInsights = await getBrandLocationInsights(brandName);
-  // If no data returned, use mock data for Novo Nordisk
-  if (locationInsights.length === 0 && brandName.toLowerCase().includes('novo')) {
-    locationInsights = mockLocationData;
-  }
-} catch (error) {
-  console.error('Error fetching location data:', error);
-  // Fall back to mock data for Novo Nordisk
-  if (brandName.toLowerCase().includes('novo')) {
-    locationInsights = mockLocationData;
-  }
-}
+// Get location insights with improved accuracy
+let locationInsights = await getBrandLocationInsights(brandName);
+
+// Determine if this is a medication for better context
+const isMedication = isProbablyMedication(brandName);
 
 // Calculate total reach for percentage calculations
 const totalReach = locationInsights.reduce((sum, location) => sum + location.reach, 0);
@@ -42,11 +33,16 @@ function formatPercentage(reach) {
 
 // Get top 5 locations for display
 const topLocations = locationInsights.slice(0, 5);
+
+// Determine the data source description
+const dataSourceDescription = isMedication 
+  ? "Estimated global market presence for this medication" 
+  : "Brand audience distribution based on search data";
 ---
 
 <div class="bg-white p-6 rounded-xl shadow-md">
   <h2 class="text-xl font-semibold mb-4">Geographical Insights</h2>
-  <p class="text-sm text-gray-500 mb-4">Brand audience distribution based on search data</p>
+  <p class="text-sm text-gray-500 mb-4">{dataSourceDescription}</p>
   
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Map Visualization -->
@@ -90,6 +86,7 @@ const topLocations = locationInsights.slice(0, 5);
       <div class="mt-6 pt-4 border-t border-gray-200">
         <p class="text-xs text-gray-500 italic">
           Data source: <a href="https://docs.trajectdata.com/serpwow/locations-api/overview" class="text-blue-600 hover:underline" target="_blank" rel="noopener">SerpWow Locations API</a>
+          {isMedication && " with pharmaceutical market analysis"}
         </p>
       </div>
     </div>

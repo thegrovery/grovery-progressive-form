@@ -1,4 +1,6 @@
 // src/lib/api-services.ts
+import { generateEnhancedSwotAnalysis } from './openai-api';
+
 export async function getGoogleTrendsData(brandName: string) {
     // Implementation using Google Trends API
   }
@@ -194,78 +196,61 @@ export async function getGoogleTrendsData(brandName: string) {
         return getFallbackAnalysis(brandData.name);
       }
 
-      // Log the data we're sending to OpenAI
-      console.log("Preparing OpenAI analysis with data:", {
-        brandName: brandData.name,
-        sentimentScore: brandData.sentimentScore,
-        domainAuthority: brandData.domainAuthority,
-        newsArticlesCount: brandData.news?.articles?.length || 0,
-        serpResultsCount: brandData.serp?.organicResults?.length || 0
-      });
-      
-      // Prepare the prompt with brand data
-      const prompt = `
-        Perform a SWOT analysis for the brand "${brandData.name}" based on the following data:
-        
-        Sentiment Score: ${brandData.sentimentScore}/100
-        Domain Authority: ${brandData.domainAuthority || 'Unknown'}
-        
-        News Articles: ${brandData.news?.articles?.length || 0} articles found
-        ${brandData.news?.articles?.slice(0, 3).map((a: any) => `- ${a.title} (Sentiment: ${a.sentiment || 'neutral'})`).join('\n') || 'No articles available'}
-        
-        Search Results: ${brandData.serp?.organicResults?.length || 0} results found
-        ${brandData.serp?.organicResults?.slice(0, 3).map((r: any) => `- ${r.title}`) || 'No search results available'}
-        
-        Provide a comprehensive SWOT analysis with:
-        - Strengths: What advantages does this brand have based on the data?
-        - Weaknesses: What disadvantages or areas of improvement does the brand have?
-        - Opportunities: What external factors could the brand leverage for growth?
-        - Threats: What external factors could harm the brand's performance?
-        
-        Format your response with clear sections for Strengths, Weaknesses, Opportunities, Threats, and a brief Summary.
-      `;
-
-      console.log("Calling OpenAI API with prompt length:", prompt.length);
-      
-      // Call OpenAI API
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo', // You can use 'gpt-4' for better results if available
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a brand analysis expert who provides concise, data-driven SWOT analyses.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000
-        })
+      // Log the raw SERP data to see what's available
+      console.log("Raw SERP data:", {
+        searchInformation: brandData.serp?.searchInformation,
+        searchMetadata: brandData.serp?.searchMetadata,
+        totalResults: brandData.serp?.totalResults,
+        organicResultsLength: brandData.serp?.organicResults?.length,
+        fullSerpObject: brandData.serp
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("OpenAI API error:", response.status, errorData);
-        throw new Error(`OpenAI API error: ${response.status} ${JSON.stringify(errorData)}`);
-      }
-
-      const data = await response.json();
-      console.log("OpenAI API response received");
+      // Extract and format SERP data more accurately
+      const serpTotalResults = brandData.serp?.searchInformation?.totalResults || 
+                              brandData.serp?.searchMetadata?.totalResults || 
+                              brandData.serp?.totalResults ||
+                              (brandData.serp?.organicResults?.length ? `${brandData.serp.organicResults.length}+` : 'Unknown');
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error("Unexpected API response format:", data);
+      // Format SERP results more clearly with explicit total results
+      const serpResultsFormatted = `${serpTotalResults || 'Unknown'} total results found (${brandData.serp?.organicResults?.length || 0} displayed)`;
+
+      // Log the extracted SERP data
+      console.log("Extracted SERP data:", {
+        serpTotalResults,
+        serpResultsFormatted,
+        organicResultsCount: brandData.serp?.organicResults?.length || 0
+      });
+
+      // Create a more structured and explicit data object for OpenAI
+      const enhancedBrandData = {
+        ...brandData,
+        serpData: {
+          totalResults: serpTotalResults,
+          formattedResults: serpResultsFormatted,
+          organicResultsCount: brandData.serp?.organicResults?.length || 0,
+          topPosition: brandData.serp?.topPosition || 'Unknown',
+          features: brandData.serp?.features || []
+        }
+      };
+      
+      // Log the final data being sent to OpenAI
+      console.log("Final data being sent to OpenAI:", {
+        brandName: enhancedBrandData.name,
+        sentimentScore: enhancedBrandData.sentimentScore,
+        domainAuthority: enhancedBrandData.domainAuthority,
+        newsArticlesCount: enhancedBrandData.news?.articles?.length || 0,
+        serpData: enhancedBrandData.serpData,
+        firstFewOrganicResults: enhancedBrandData.serp?.organicResults?.slice(0, 3).map(r => r.title) || []
+      });
+      
+      // Use our enhanced SWOT analysis function with improved data
+      const analysisText = await generateEnhancedSwotAnalysis(enhancedBrandData);
+      
+      if (!analysisText) {
+        console.error("Failed to generate analysis");
         return getFallbackAnalysis(brandData.name);
       }
       
-      const analysisText = data.choices[0].message.content || '';
       console.log("Raw OpenAI response text:", analysisText);
       
       // Parse the analysis text into structured data
