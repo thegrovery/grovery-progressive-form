@@ -1,0 +1,50 @@
+---
+// src/components/SentimentScore.astro
+const { brandName } = Astro.props;
+
+// Fetch sentiment data
+import { getSerpData, getNewsData } from '../lib/api-services';
+const serpData = await getSerpData(brandName);
+const newsData = await getNewsData(brandName);
+
+// Calculate sentiment score (simple example)
+const sentimentScore = calculateSentiment(serpData, newsData);
+
+function calculateSentiment(serp: any, news: any) {
+  // Algorithm to calculate sentiment
+  return Math.floor(Math.random() * 100); // Placeholder
+}
+---
+
+<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200">
+  <h2 class="text-xl font-semibold mb-4">Brand Sentiment Score</h2>
+  
+  <div class="flex items-center justify-center">
+    <div class="relative w-48 h-48">
+      <!-- Circular progress indicator -->
+      <svg class="w-full h-full" viewBox="0 0 100 100">
+        <circle class="text-gray-200 stroke-current" stroke-width="10" cx="50" cy="50" r="40" fill="transparent"></circle>
+        <circle 
+          class="text-blue-600 stroke-current" 
+          stroke-width="10" 
+          stroke-linecap="round" 
+          stroke-dasharray={`${sentimentScore * 2.51}, 251.2`} 
+          cx="50" 
+          cy="50" 
+          r="40" 
+          fill="transparent"
+          transform="rotate(-90 50 50)"
+        ></circle>
+      </svg>
+      <div class="absolute inset-0 flex items-center justify-center">
+        <span class="text-4xl font-bold">{sentimentScore}</span>
+      </div>
+    </div>
+  </div>
+  
+  <p class="mt-4 text-center text-gray-700">
+    {sentimentScore > 75 ? 'Excellent brand perception!' : 
+     sentimentScore > 50 ? 'Good brand perception with room for improvement' : 
+     'Significant brand challenges identified'}
+  </p>
+</div>

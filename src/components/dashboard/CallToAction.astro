@@ -1,0 +1,26 @@
+---
+// Call to Action Component
+const { brandName = '' } = Astro.props;
+---
+
+<div class="bg-gradient-to-br from-teal-800 to-zinc-800 rounded-xl ring-1 ring-gray-200 overflow-hidden mt-6">
+  <div class="px-6 py-8 md:flex items-center justify-between">
+    <div class="md:w-2/3 mb-6 md:mb-0">
+      <h3 class="text-white text-2xl font-bold mb-2">Ready to strengthen your brand presence?</h3>
+      <p class="text-teal-100 text-lg">
+        Get professional brand strategy services to elevate {brandName}'s market position.
+      </p>
+    </div>
+    <div class="md:w-1/3 text-center">
+      <a 
+        href="https://thegrovery.com/brand-strategy" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        class="inline-block bg-white text-teal-600 font-bold py-3 px-6 rounded-lg shadow-md hover:bg-teal-50 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+      >
+        Explore Brand Strategy
+        <span class="ml-2">→</span>
+      </a>
+    </div>
+  </div>
+</div> 

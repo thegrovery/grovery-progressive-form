@@ -1,0 +1,78 @@
+---
+// Define props
+const { isLoading = false, apiStatus = {}, id = 'loading-overlay' } = Astro.props;
+
+// Load messages for different API stages
+const messages = [
+  "Analyzing brand sentiment...",
+  "Accessing Google Trends data...",
+  "Finding domain authority insights...",
+  "Gathering SERP positioning data...",
+  "Generating AI brand analysis...",
+  "Almost there! Preparing your brand dashboard..."
+];
+
+// Calculate progress based on which APIs have completed
+const completedApis = Object.values(apiStatus).filter(status => status).length;
+const totalApis = Object.values(apiStatus).length;
+const progress = totalApis > 0 ? Math.round((completedApis / totalApis) * 100) : 0;
+
+// Get a message based on progress
+const messageIndex = Math.min(Math.floor(progress / 20), messages.length - 1);
+const currentMessage = messages[messageIndex];
+---
+
+<div id={id}
+     class={`fixed inset-0 z-50 ${!isLoading ? "hidden" : "flex"} flex-col items-center justify-center bg-white transition-opacity duration-300`}>
+  <div class="w-full max-w-md px-6 py-8 bg-white rounded-xl shadow-lg text-center">
+    <div class="animate-pulse mb-4">
+      <svg class="w-16 h-16 text-blue-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    </div>
+    
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Analyzing Your Brand</h2>
+    
+    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+      <div id="loading-progress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style={`width: ${progress}%`}></div>
+    </div>
+    
+    <p id="loading-message" class="text-gray-600">{currentMessage}</p>
+  </div>
+</div>
+
+<script>
+  // Client-side script to update the loading state
+  let messageIndex = 0;
+  const messages = [
+    "Analyzing brand sentiment...",
+    "Accessing Google Trends data...",
+    "Finding domain authority insights...",
+    "Gathering SERP positioning data...",
+    "Generating AI brand analysis...",
+    "Almost there! Preparing your brand dashboard..."
+  ];
+
+  // Cycle through messages every few seconds
+  const loadingMessage = document.getElementById('loading-message');
+  const loadingProgress = document.getElementById('loading-progress');
+  
+  // Reuse this component in different contexts
+  const overlayId = document.currentScript?.parentElement?.id || 'loading-overlay';
+  const loadingOverlay = document.getElementById(overlayId);
+</script>
+
+<style>
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+</style>

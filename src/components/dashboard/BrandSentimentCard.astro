@@ -1,0 +1,135 @@
+---
+// Brand Sentiment Card Component
+const { score = 50, summary = '' } = Astro.props;
+
+// Determine color based on score
+let color = 'text-yellow-500';
+let bgColor = 'from-yellow-500';
+let strokeColor = 'stroke-yellow-500';
+let label = 'Neutral';
+
+if (score >= 70) {
+  color = 'text-green-500';
+  bgColor = 'from-green-500';
+  strokeColor = 'stroke-green-500';
+  label = 'Positive';
+} else if (score <= 30) {
+  color = 'text-red-500';
+  bgColor = 'from-red-500';
+  strokeColor = 'stroke-red-500';
+  label = 'Negative';
+}
+
+// Calculate percentages for the progress bars
+const positivePercent = Math.min(100, Math.max(0, score));
+const neutralPercent = Math.min(100, Math.max(0, 100 - Math.abs(score - 50) * 2));
+const negativePercent = Math.min(100, Math.max(0, 100 - score));
+
+// Calculate the circle's circumference and stroke-dashoffset
+const radius = 45;
+const circumference = 2 * Math.PI * radius;
+const dashOffset = circumference - (circumference * score / 100);
+
+// Clean up summary text - remove asterisks, "Summary:", and other markdown formatting
+const cleanSummary = summary
+  .replace(/^\s*\*+\s*/, '') // Remove leading asterisks
+  .replace(/^Summary:\s*/i, '') // Remove "Summary:" prefix
+  .replace(/\*\*/g, '') // Remove all double asterisks (bold markdown)
+  .trim();
+---
+
+<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200">
+  <h2 class="text-xl font-semibold mb-4">Brand Sentiment</h2>
+  
+  <div class="flex items-center justify-between mb-6">
+    <!-- Sentiment Score Gauge -->
+    <div class="relative w-32 h-32">
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class={`text-4xl font-bold ${color}`}>{score}</div>
+      </div>
+      <svg class="w-full h-full" viewBox="0 0 100 100">
+        <!-- Background circle -->
+        <circle 
+          cx="50" 
+          cy="50" 
+          r="45" 
+          fill="none" 
+          stroke="#f0f0f0" 
+          stroke-width="10"
+          stroke-dasharray={circumference}
+          stroke-dashoffset="0"
+          transform="rotate(-90 50 50)"
+        />
+        <!-- Foreground circle -->
+        <circle 
+          cx="50" 
+          cy="50" 
+          r="45" 
+          fill="none" 
+          class={strokeColor}
+          stroke-width="10"
+          stroke-dasharray={circumference}
+          stroke-dashoffset={dashOffset}
+          transform="rotate(-90 50 50)"
+          stroke-linecap="round"
+        />
+      </svg>
+    </div>
+    
+    <!-- Sentiment Breakdown -->
+    <div class="flex-1 ml-6">
+      <h3 class="text-sm font-medium mb-3">Sentiment Breakdown</h3>
+      
+      <!-- Positive -->
+      <div class="mb-2">
+        <div class="flex justify-between text-xs mb-1">
+          <span>Positive</span>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-green-500 rounded-full" style={`width: ${positivePercent}%`}></div>
+        </div>
+      </div>
+      
+      <!-- Neutral -->
+      <div class="mb-2">
+        <div class="flex justify-between text-xs mb-1">
+          <span>Neutral</span>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-yellow-500 rounded-full" style={`width: ${neutralPercent}%`}></div>
+        </div>
+      </div>
+      
+      <!-- Negative -->
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span>Negative</span>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-red-500 rounded-full" style={`width: ${negativePercent}%`}></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Summary Section -->
+  {cleanSummary && (
+    <div class="mt-4 pt-4 border-t border-gray-200">
+      <h3 class="text-sm font-medium mb-2">Brand Summary</h3>
+      <p class="text-sm text-gray-700">{cleanSummary}</p>
+    </div>
+  )}
+</div>
+
+<style>
+  .circle-progress {
+    stroke-dashoffset: 0;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+  
+  .score-text {
+    font-size: 0.6rem;
+    line-height: 1;
+  }
+</style> 

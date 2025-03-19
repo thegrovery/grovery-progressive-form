@@ -1,0 +1,175 @@
+---
+// Geographical Insights Card Component
+import { getBrandLocationInsights } from '../../lib/serpwow-api';
+import { isProbablyMedication } from '../../lib/brand-utils';
+
+const { brandName = '' } = Astro.props;
+
+// For now, use mock data for Novo Nordisk until the API is properly configured
+const mockLocationData = [
+  { name: "Denmark", fullName: "Denmark", countryCode: "DK", type: "country", reach: 100, coordinates: [56.2639, 9.5018] },
+  { name: "United States", fullName: "United States", countryCode: "US", type: "country", reach: 85, coordinates: [37.0902, -95.7129] },
+  { name: "United Kingdom", fullName: "United Kingdom", countryCode: "GB", type: "country", reach: 65, coordinates: [55.3781, -3.4360] },
+  { name: "Germany", fullName: "Germany", countryCode: "DE", type: "country", reach: 60, coordinates: [51.1657, 10.4515] },
+  { name: "Sweden", fullName: "Sweden", countryCode: "SE", type: "country", reach: 55, coordinates: [60.1282, 18.6435] },
+  { name: "Norway", fullName: "Norway", countryCode: "NO", type: "country", reach: 50, coordinates: [60.4720, 8.4689] },
+  { name: "China", fullName: "China", countryCode: "CN", type: "country", reach: 45, coordinates: [35.8617, 104.1954] },
+  { name: "Japan", fullName: "Japan", countryCode: "JP", type: "country", reach: 40, coordinates: [36.2048, 138.2529] }
+];
+
+// Get location insights with improved accuracy
+let locationInsights = await getBrandLocationInsights(brandName);
+
+// Determine if this is a medication for better context
+const isMedication = isProbablyMedication(brandName);
+
+// Calculate total reach for percentage calculations
+const totalReach = locationInsights.reduce((sum, location) => sum + location.reach, 0);
+
+// Format percentage
+function formatPercentage(reach) {
+  return Math.round((reach / totalReach) * 100) + '%';
+}
+
+// Get top 5 locations for display
+const topLocations = locationInsights.slice(0, 5);
+
+// Determine the data source description
+const dataSourceDescription = isMedication 
+  ? "Estimated global market presence for this medication" 
+  : "Brand audience distribution based on search data";
+---
+
+<div class="bg-white p-6 rounded-xl shadow-md">
+  <h2 class="text-xl font-semibold mb-4">Geographical Insights</h2>
+  <p class="text-sm text-gray-500 mb-4">{dataSourceDescription}</p>
+  
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Map Visualization -->
+    <div class="bg-gray-50 rounded-lg p-4 h-72 relative overflow-hidden">
+      <div id="geo-map" class="absolute inset-0"></div>
+    </div>
+    
+    <!-- Top Locations List -->
+    <div>
+      <h3 class="text-sm font-medium text-gray-700 mb-3">Top Audience Locations</h3>
+      {locationInsights.length > 0 ? (
+        <div class="space-y-3">
+          {topLocations.map((location) => (
+            <div class="flex items-center">
+              <div class="w-8 h-6 mr-3 flex-shrink-0 rounded overflow-hidden shadow-sm">
+                <img 
+                  src={`https://flagcdn.com/w80/${location.countryCode.toLowerCase()}.png`} 
+                  alt={`${location.countryCode} flag`}
+                  class="w-full h-full object-cover"
+                  onerror="this.src='https://flagcdn.com/w80/us.png'"
+                />
+              </div>
+              <div class="flex-grow">
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-sm font-medium">{location.name}</span>
+                  <span class="text-sm font-semibold">{formatPercentage(location.reach)}</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                  <div class="bg-blue-600 h-1.5 rounded-full" style={`width: ${formatPercentage(location.reach)}`}></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-8">
+          <p class="text-gray-500">No location data available for this brand.</p>
+        </div>
+      )}
+      
+      <div class="mt-6 pt-4 border-t border-gray-200">
+        <p class="text-xs text-gray-500 italic">
+          Data source: <a href="https://docs.trajectdata.com/serpwow/locations-api/overview" class="text-blue-600 hover:underline" target="_blank" rel="noopener">SerpWow Locations API</a>
+          {isMedication && " with pharmaceutical market analysis"}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ locationInsights }}>
+  // Load the Leaflet map library
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Dynamically load Leaflet CSS
+    const leafletCSS = document.createElement('link');
+    leafletCSS.rel = 'stylesheet';
+    leafletCSS.href = 'https://unpkg.com/leaflet@1.9.3/dist/leaflet.css';
+    document.head.appendChild(leafletCSS);
+    
+    // Dynamically load Leaflet JS
+    const leafletScript = document.createElement('script');
+    leafletScript.src = 'https://unpkg.com/leaflet@1.9.3/dist/leaflet.js';
+    document.head.appendChild(leafletScript);
+    
+    // Wait for Leaflet to load
+    leafletScript.onload = () => {
+      if (locationInsights && locationInsights.length > 0) {
+        initMap(locationInsights);
+      }
+    };
+  });
+  
+  function initMap(locations) {
+    if (!locations || locations.length === 0) return;
+    
+    // Find center of map based on locations
+    const validCoordinates = locations.filter(loc => 
+      loc.coordinates && loc.coordinates.length === 2 && 
+      !isNaN(loc.coordinates[0]) && !isNaN(loc.coordinates[1])
+    );
+    
+    if (validCoordinates.length === 0) return;
+    
+    // Initialize the map with better defaults
+    const map = L.map('geo-map', {
+      center: [30, 0], // More centered view of the world
+      zoom: 2,
+      zoomControl: true,
+      attributionControl: true,
+      dragging: true,
+      scrollWheelZoom: false
+    });
+    
+    // Add a better looking tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+    
+    // Add markers for each location
+    locations.forEach(location => {
+      if (!location.coordinates || location.coordinates.length !== 2 || 
+          isNaN(location.coordinates[0]) || isNaN(location.coordinates[1])) {
+        return;
+      }
+      
+      // Calculate size based on reach (popularity)
+      const maxReach = Math.max(...locations.map(l => l.reach || 0));
+      const size = Math.max(20, Math.min(40, (location.reach / maxReach) * 40));
+      
+      const markerIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color: rgba(59, 130, 246, 0.7); width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white;"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+      });
+      
+      L.marker(location.coordinates, { icon: markerIcon })
+        .addTo(map)
+        .bindTooltip(location.name, { permanent: false });
+    });
+    
+    // Fit bounds to show all markers
+    const bounds = validCoordinates.map(loc => loc.coordinates);
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }
+</script> 
