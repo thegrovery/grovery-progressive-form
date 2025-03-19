@@ -18,11 +18,15 @@ function cleanMarkdown(text: string) {
   // Remove leading asterisks, dots, or dashes that might be part of markdown
   let cleaned = text.replace(/^\s*[\*\-\.]\s*/, '').trim();
   
-  // Convert **text** to <strong> tags for bold formatting
-  cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Remove </strong> and <strong> tags if they somehow got in there
+  cleaned = cleaned.replace(/<\/?strong>/g, '');
   
-  // Remove any remaining single asterisks
+  // Remove any remaining single or double asterisks
+  cleaned = cleaned.replace(/\*\*/g, '');
   cleaned = cleaned.replace(/\*/g, '');
+  
+  // Remove "Summary:" prefix
+  cleaned = cleaned.replace(/^Opportunities:\s*/i, '');
   
   // Clean up any double spaces that might have been created
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
@@ -59,10 +63,10 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
+                    <span class="font-semibold">{parts[0]}</span>: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  <span set:html={strength} />
+                  <span>{strength}</span>
                 )}
               </li>
             );
@@ -80,10 +84,10 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
+                    <span class="font-semibold">{parts[0]}</span>: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  <span set:html={weakness} />
+                  <span>{weakness}</span>
                 )}
               </li>
             );
@@ -101,10 +105,10 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
+                    <span class="font-semibold">{parts[0]}</span>: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  <span set:html={opportunity} />
+                  <span>{opportunity}</span>
                 )}
               </li>
             );
@@ -122,10 +126,10 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
+                    <span class="font-semibold">{parts[0]}</span>: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  <span set:html={threat} />
+                  <span>{threat}</span>
                 )}
               </li>
             );
