@@ -1,4 +1,6 @@
 ---
+import BlurOverlay from "../BlurOverlay.astro";
+
 // SERP Results Card Component
 const { serpData = {} } = Astro.props;
 
@@ -39,7 +41,7 @@ console.log("SERP Data:", {
 });
 ---
 
-<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200">
+<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200 relative">
   <h2 class="text-xl font-semibold mb-4">Search Results</h2>
   
   <!-- Search Metrics -->
@@ -61,49 +63,61 @@ console.log("SERP Data:", {
   
   <!-- SERP Features -->
   <div class="mb-6">
-    <h3 class="text-sm font-medium text-gray-700 mb-3">SERP Features</h3>
+    <h3 class="text-sm font-medium text-gray-700 mb-3">Google Search Features</h3>
     <div class="grid grid-cols-2 gap-3">
       <div class={`p-3 rounded-lg border ${hasFeaturedSnippet ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-        <div class="flex items-center">
+        <div class="flex items-center group relative">
           <div class={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${hasFeaturedSnippet ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
             </svg>
           </div>
-          <span>Featured Snippet</span>
+          <span>Featured Answer Box</span>
+          <div class="absolute bottom-full left-0 mb-2 w-64 rounded bg-gray-800 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+            A highlighted box at the top of search results that directly answers the user's query. Getting featured here significantly increases visibility.
+          </div>
         </div>
       </div>
       
       <div class={`p-3 rounded-lg border ${hasKnowledgePanel ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-        <div class="flex items-center">
+        <div class="flex items-center group relative">
           <div class={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${hasKnowledgePanel ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
             </svg>
           </div>
-          <span>Knowledge Panel</span>
+          <span>Information Panel</span>
+          <div class="absolute bottom-full left-0 mb-2 w-64 rounded bg-gray-800 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+            A box that appears on the right side of search results showing key information about entities (people, places, organizations, etc.) from Google's Knowledge Graph.
+          </div>
         </div>
       </div>
       
       <div class={`p-3 rounded-lg border ${hasLocalPack ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-        <div class="flex items-center">
+        <div class="flex items-center group relative">
           <div class={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${hasLocalPack ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
             </svg>
           </div>
-          <span>Local Pack</span>
+          <span>Local Business Results</span>
+          <div class="absolute bottom-full left-0 mb-2 w-64 rounded bg-gray-800 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+            When a search includes a map with nearby businesses related to the search query. Appears for searches with local intent and gives prominence to local businesses.
+          </div>
         </div>
       </div>
       
       <div class={`p-3 rounded-lg border ${hasTopPosition ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-        <div class="flex items-center">
+        <div class="flex items-center group relative">
           <div class={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${hasTopPosition ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
             </svg>
           </div>
-          <span>Top 3 Position</span>
+          <span>Ranked in Top 3</span>
+          <div class="absolute bottom-full left-0 mb-2 w-64 rounded bg-gray-800 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+            When a website appears among the first three organic search results, which typically receive the highest click-through rates and visibility.
+          </div>
         </div>
       </div>
     </div>
@@ -145,4 +159,11 @@ console.log("SERP Data:", {
       </div>
     </div>
   )}
+
+  <!-- Blur Overlay with CTA -->
+  <BlurOverlay 
+    ctaText="Want to See the Complete Search Engine Results Page analysis?" 
+    buttonText="Contact us for a Greenhouse&trade; Review"
+    buttonUrl="https://thegrovery.com/contact"
+  />
 </div>
