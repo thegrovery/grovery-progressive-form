@@ -26,7 +26,8 @@ export const POST: APIRoute = async ({ request }) => {
       lastname: formData.name.split(' ').slice(1).join(' ') || '',
       company: formData.company,
       jobtitle: formData.title,
-      website: formData.brandName  // Store brand name in the website field
+      website: formData.brandName,  // This was storing brand name in website field
+      brand_of_interest: formData.brandName  // Add this line to map to your new custom field
     };
     
     let contactId;
