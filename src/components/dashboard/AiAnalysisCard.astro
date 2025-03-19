@@ -1,4 +1,5 @@
 ---
+import BlurOverlay from "../BlurOverlay.astro";
 // AI Analysis Card Component
 const { analysis = {} } = Astro.props;
 
@@ -15,7 +16,18 @@ function cleanMarkdown(text: string) {
   if (!text) return '';
   
   // Remove leading asterisks, dots, or dashes that might be part of markdown
-  return text.replace(/^\s*[\*\-\.]\s*/, '').trim();
+  let cleaned = text.replace(/^\s*[\*\-\.]\s*/, '').trim();
+  
+  // Convert **text** to <strong> tags for bold formatting
+  cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Remove any remaining single asterisks
+  cleaned = cleaned.replace(/\*/g, '');
+  
+  // Clean up any double spaces that might have been created
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  return cleaned;
 }
 
 // Filter out empty items and clean markdown
@@ -32,7 +44,7 @@ const cleanOpportunities = processItems(opportunities);
 const cleanThreats = processItems(threats);
 ---
 
-<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200">
+<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200 relative">
   <h2 class="text-xl font-semibold mb-4">AI Analysis</h2>
   
   {!hasError ? (
@@ -42,16 +54,15 @@ const cleanThreats = processItems(threats);
         <h3 class="text-green-600 font-medium mb-2">Strengths</h3>
         <ul class="list-disc pl-5 space-y-1">
           {cleanStrengths.map((strength: any) => {
-            // Split by colon to handle "Title: Description" format
             const parts = strength.split(/:\s*/);
             return (
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span class="font-semibold">{parts[0]}:</span> {parts.slice(1).join(': ')}
+                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  strength
+                  <span set:html={strength} />
                 )}
               </li>
             );
@@ -69,10 +80,10 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span class="font-semibold">{parts[0]}:</span> {parts.slice(1).join(': ')}
+                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  weakness
+                  <span set:html={weakness} />
                 )}
               </li>
             );
@@ -90,10 +101,10 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span class="font-semibold">{parts[0]}:</span> {parts.slice(1).join(': ')}
+                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  opportunity
+                  <span set:html={opportunity} />
                 )}
               </li>
             );
@@ -111,16 +122,19 @@ const cleanThreats = processItems(threats);
               <li class="text-sm">
                 {parts.length > 1 ? (
                   <>
-                    <span class="font-semibold">{parts[0]}:</span> {parts.slice(1).join(': ')}
+                    <span set:html={parts[0]} class="font-semibold" />: {parts.slice(1).join(': ')}
                   </>
                 ) : (
-                  threat
+                  <span set:html={threat} />
                 )}
               </li>
             );
           })}
         </ul>
       </div>
+
+
+      
     </div>
   ) : (
     <div class="bg-red-50 p-4 rounded-lg">
@@ -128,4 +142,11 @@ const cleanThreats = processItems(threats);
       <p class="text-sm text-red-700">We encountered an error analyzing this brand. Please try again later.</p>
     </div>
   )}
+
+  <!-- Blur Overlay with CTA -->
+  <BlurOverlay 
+    ctaText="Want to see the complete AI analysis?" 
+    buttonText="Contact us for a Greenhouse&trade; Review"
+    buttonUrl="https://thegrovery.com/contact"
+  />
 </div> 
