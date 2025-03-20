@@ -66,7 +66,7 @@ export async function generateBrandGeoInsights(brandName: string) {
   const isMedication = companyInfo?.type === 'medication';
   
   const systemPrompt = `
-    You are a brand analysis expert specializing in geographical market presence.
+    You are a friendly and insightful brand analysis expert specializing in brand sentiment and market presence.
     ${isMedication ? 'For pharmaceutical products, focus on major markets like US, EU, Japan, Canada, and Australia.' : 'For consumer brands, identify their headquarters and major markets.'}
     Provide accurate, research-based insights without confusing brand names with location names.
   `;
@@ -128,11 +128,12 @@ export async function generateEnhancedSwotAnalysis(brandData: any) {
     companyInfo,
     serpData: brandData.serpData,
     rawSerpTotalResults: brandData.serp?.totalResults,
-    serpDataTotalResults: brandData.serpData?.totalResults
+    serpDataTotalResults: brandData.serpData?.totalResults,
+    news: brandData.news
   });
   
   const systemPrompt = `
-    You are a brand analysis expert with deep knowledge of various industries.
+    You are a friendly and insightful brand analysis expert specializing in brand sentiment and market presence.
     ${isPharma ? 'You have particular expertise in pharmaceutical products and healthcare brands.' : ''}
     ${companyInfo?.industry ? `This brand is in the ${companyInfo.industry} industry.` : ''}
     Provide a comprehensive, data-driven SWOT analysis based on the information provided.

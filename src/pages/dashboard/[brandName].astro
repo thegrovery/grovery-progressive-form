@@ -10,6 +10,7 @@ import SerpResultsCard from '../../components/dashboard/SerpResultsCard.astro';
 import AiAnalysisCard from '../../components/dashboard/AiAnalysisCard.astro';
 import CallToAction from '../../components/dashboard/CallToAction.astro';
 import GeographicalInsightsCard from '../../components/dashboard/GeographicalInsightsCard.astro';
+import NewsCard from '../../components/dashboard/NewsCard.astro';
 import type { SerpData } from '../../lib/serp-api';
 
 // Get brand name from URL params
@@ -34,26 +35,29 @@ let aiAnalysis = null;
 let sentimentScore = 50;
 
 try {
-  // Fetch data from APIs in parallel
+  // Fetch data from APIs in parallel first
   const [newsResult, serpResult, mozResult] = await Promise.all([
     getNewsData(brandName || ''),
     fetchSerpResults(brandName || ''),
     fetchMozDomainAuthority(brandName || '')
   ]);
   
+  // Assign results
   newsData = newsResult;
   serpData = serpResult;
   mozData = mozResult;
   
-  // Log the data structure to help debug
-  console.log("SERP data structure:", {
-    hasOrganicResults: !!serpData.organic_results,
-    organicResultsCount: serpData.organic_results?.length || 0,
-    hasKnowledgeGraph: !!serpData.knowledge_graph,
-    hasRelatedQuestions: !!serpData.related_questions
+  // Debug log specifically for SERP data structure
+  console.log("SERP data inspection:", {
+    rawData: {
+      hasSearchInfo: !!serpData.search_information,
+      totalResults: serpData.search_information?.total_results,
+      organicResultsLength: serpData.organic_results?.length
+    },
+    serpKeys: Object.keys(serpData)
   });
   
-  // Calculate sentiment score using the new function
+  // Calculate sentiment score
   sentimentScore = calculateSentimentScore({
     news: newsData,
     serp: serpData,
@@ -61,19 +65,38 @@ try {
       (mozData as any).domainAuthority || 0 : 0
   });
   
-  // Generate AI analysis with all the data
-  aiAnalysis = await generateAiAnalysis({
-    name: brandName,
-    sentimentScore,
-    domainAuthority: typeof mozData === 'object' && mozData !== null ? 
-      (mozData as any).domainAuthority || 0 : 0,
-    news: newsData,
-    serp: serpData
-  });
-  
+  // Always attempt to generate AI analysis, with thorough error handling
+  try {
+    console.log("⏳ Calling generateAiAnalysis with brand:", brandName);
+    
+    aiAnalysis = await generateAiAnalysis({
+      name: brandName,
+      sentimentScore,
+      domainAuthority: typeof mozData === 'object' && mozData !== null ? 
+        (mozData as any).domainAuthority || 0 : 0,
+      news: newsData,
+      // Pass the full serpData but also include extracted fields
+      serp: serpData,
+      // Include specific fields directly in the main object
+      serpTotalResults: serpData.search_information?.total_results,
+      organicResultsCount: serpData.organic_results?.length || 0
+    });
+    
+    console.log("✅ AI Analysis completed:", aiAnalysis ? "success" : "null result");
+  } catch (analysisError) {
+    console.error("🚨 Error in AI analysis:", analysisError);
+    // Create a minimal analysis object so the UI doesn't break
+    aiAnalysis = {
+      strengths: [{ finding: "Data available", explanation: "Basic brand data was collected successfully." }],
+      weaknesses: [{ finding: "Analysis error", explanation: "We encountered an error generating the detailed analysis." }],
+      opportunities: [],
+      threats: [],
+      summary: "Basic brand data collected. Contact support for a complete analysis."
+    };
+  }
 } catch (error) {
   console.error("Error fetching brand data:", error);
-  // sentimentScore already has a default value, no need to set it again
+  // sentimentScore already has a default value
 }
 ---
 
@@ -110,6 +133,9 @@ try {
           <!-- SERP Results Card -->
           <SerpResultsCard serpData={serpData} />
           
+          <!-- News Card -->
+          <NewsCard brandName={brandName} />
+          
           <!-- Geographical Insights Card -->
           <GeographicalInsightsCard brandName={brandName} />
 
@@ -118,6 +144,7 @@ try {
         </div>
         
       </div>
+      
       
       
     </div>
