@@ -1,0 +1,84 @@
+---
+import BlurOverlay from '../BlurOverlay.astro';
+
+interface Props {
+  brandName: string;
+}
+
+const { brandName } = Astro.props;
+
+// Optional: Add any server-side logic here if needed
+// For example, you could pre-fetch initial news data
+// const initialNews = await fetch(...);
+---
+
+<div class="bg-white p-6 rounded-xl ring-1 ring-gray-200 relative">
+  <h2 class="text-xl font-semibold mb-4">Recent News</h2>
+  
+  <div id="newsContent" class="space-y-4">
+    <div class="animate-pulse">
+      <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+      <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+    </div>
+  </div>
+
+  <!-- <BlurOverlay 
+    ctaText="Want to see all news mentions?" 
+    buttonText="Contact us for a Greenhouse™ Review"
+    buttonUrl="/contact"
+  /> -->
+</div>
+
+<script define:vars={{ brandName }}>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch(`/api/news?brandName=${encodeURIComponent(brandName)}`);
+        const data = await response.json();
+        
+        if (data.articles && data.articles.length > 0) {
+          const newsContent = document.getElementById('newsContent');
+          if (newsContent) {
+            newsContent.innerHTML = `
+              <div class="space-y-4">
+                ${data.articles.slice(0, 5).map(article => `
+                  <div class="border-b border-gray-100 pb-4 last:border-0">
+                    <h3 class="text-sm font-medium mb-1">
+                      <a href="${article.url}" target="_blank" rel="noopener noreferrer" 
+                         class="text-gray-900 hover:text-blue-600">
+                        ${article.title}
+                      </a>
+                    </h3>
+                    <p class="text-xs text-gray-500 mb-2">
+                      ${new Date(article.publishedAt).toLocaleDateString()} • ${article.source.name}
+                    </p>
+                    <p class="text-sm text-gray-600 line-clamp-2">
+                      ${article.description || ''}
+                    </p>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          }
+        } else {
+          const newsContent = document.getElementById('newsContent');
+          if (newsContent) {
+            newsContent.innerHTML = `
+              <div class="text-gray-500 text-sm">
+                No recent news articles found for ${brandName}.
+              </div>
+            `;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching news:', error);
+        const newsContent = document.getElementById('newsContent');
+        if (newsContent) {
+          newsContent.innerHTML = `
+            <div class="text-red-500 text-sm">
+              Failed to load news data. Please try again later.
+            </div>
+          `;
+        }
+      }
+    });
+    </script>
