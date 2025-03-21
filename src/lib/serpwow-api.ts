@@ -2,7 +2,7 @@
 import { generateBrandGeoInsights } from './openai-api';
 
 /**
- * Fetch location data from SerpWow Locations API
+ * Fetch location data from SerpWow API
  * @param query Search query for locations
  * @param options Additional options like country_code, type
  */
@@ -11,29 +11,101 @@ export async function fetchLocationData(query: string, options: {
   type?: string
 } = {}) {
   try {
-    const apiKey = import.meta.env.SERPWOW_API_KEY || 'demo'; // Use your API key from environment variables
+    const apiKey = import.meta.env.SERP_WOW_API_KEY || 'demo'; // Use your API key from environment variables
     
-    // Build URL with query parameters
+    console.log('🔍 SerpWow API call initiated for query:', query);
+    
+    // Check if using demo key
+    if (apiKey === 'demo') {
+      console.warn('⚠️ Using demo SerpWow API key - this will not register in your SerpWow account!');
+    }
+    
+    // Build URL with query parameters - UPDATED TO CORRECT ENDPOINT
     const params = new URLSearchParams({
       api_key: apiKey,
-      q: query
+      q: query,
+      search_type: 'places',
+      engine: 'google'
     });
     
     // Add optional parameters
-    if (options.country_code) params.append('country_code', options.country_code);
+    if (options.country_code) params.append('gl', options.country_code);
     if (options.type) params.append('type', options.type);
     
-    const response = await fetch(`https://api.serpwow.com/live/locations?${params.toString()}`);
+    // CORRECT ENDPOINT: /live/search instead of /live/locations
+    const url = `https://api.serpwow.com/live/search?${params.toString()}`;
+    console.log('📡 SerpWow API URL:', url.replace(apiKey, '[REDACTED]'));
+    
+    const response = await fetch(url);
+    
+    // Log the response status
+    console.log(`📊 SerpWow API response status: ${response.status}`);
     
     if (!response.ok) {
-      throw new Error(`SerpWow API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('🛑 SerpWow API error response:', errorText);
+      throw new Error(`SerpWow API error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
-    return data.locations || [];
+    console.log('✅ SerpWow API response received');
+    
+    // Extract places_results from the response data
+    return data.places_results || [];
   } catch (error) {
-    console.error('Error fetching location data:', error);
+    console.error('🚨 Error fetching location data:', error);
     return [];
+  }
+}
+
+/**
+ * Test SerpWow API connectivity with a simple search query
+ */
+export async function testSerpWowApi() {
+  try {
+    const apiKey = import.meta.env.SERP_WOW_API_KEY || 'demo';
+    
+    console.log('🧪 Testing SerpWow API connectivity...');
+    
+    // Try a basic search which is their primary API endpoint
+    const params = new URLSearchParams({
+      api_key: apiKey,
+      q: 'test query',
+      engine: 'google', 
+      gl: 'us',
+      hl: 'en'
+    });
+    
+    // Using their main /search endpoint
+    const url = `https://api.serpwow.com/search?${params.toString()}`;
+    console.log('📡 SerpWow Test URL:', url.replace(apiKey, '[REDACTED]'));
+    
+    const response = await fetch(url);
+    console.log(`📊 SerpWow Test status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🛑 SerpWow Test error:', errorText);
+      return {
+        success: false,
+        message: `API Error: ${response.status} - ${errorText}`
+      };
+    }
+    
+    const data = await response.json();
+    console.log('✅ SerpWow Test successful!');
+    
+    return {
+      success: true,
+      message: 'SerpWow API connection successful',
+      searchInfo: data.search_information || {} 
+    };
+  } catch (error) {
+    console.error('🚨 Error testing SerpWow API:', error);
+    return {
+      success: false,
+      message: `Exception: ${error.message}`
+    };
   }
 }
 

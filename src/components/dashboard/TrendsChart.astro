@@ -58,6 +58,27 @@ const useMockData = timelineData.length === 0;
   <div class="h-64">
     <canvas id={chartId} data-labels={JSON.stringify(labels)} data-values={JSON.stringify(values)} data-brand={brandName} data-mock={useMockData}></canvas>
   </div>
+
+   <!-- New explanation box -->
+   <div class="mt-4 p-4 bg-blue-50 text-gray-700 rounded-lg text-sm">
+    <h4 class="font-semibold mb-1">Understanding Interest Scores</h4>
+    <p class="mb-2">The numbers on this chart represent <strong>relative search interest</strong> on a scale from 0-100:</p>
+    <ul class="list-disc pl-5 space-y-1">
+      <li><strong>100</strong> = Peak popularity during this time period</li>
+      <li><strong>50</strong> = Half as popular as the peak</li>
+      <li><strong>0</strong> = Less than 1% of peak popularity</li>
+    </ul>
+    <p class="mt-2">These are <strong>not</strong> absolute search volumes - they show how interest has changed over time relative to the highest point.</p>
+    
+    <div class="mt-3 text-blue-700">
+      <p>For context: An average score of {averageInterest} means "{brandName}" maintained 
+      {averageInterest >= 80 ? "extremely high" : 
+       averageInterest >= 60 ? "strong" : 
+       averageInterest >= 40 ? "moderate" : 
+       averageInterest >= 20 ? "modest" : "minimal"} 
+      search interest relative to its peak popularity.</p>
+    </div>
+  </div>
   
   {useMockData && (
     <div class="mt-4 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm">

@@ -2,7 +2,79 @@
 import { generateEnhancedSwotAnalysis } from './openai-api';
 
 export async function getGoogleTrendsData(brandName: string) {
-    // Implementation using Google Trends API
+    try {
+      const apiKey = import.meta.env.SERP_API_KEY;
+      
+      if (!apiKey) {
+        console.warn('⚠️ SERP_API_KEY not found in environment variables');
+        return { interest_over_time: { timeline_data: [], averages: [] } };
+      }
+      
+      console.log(`🔍 Fetching Google Trends data for: ${brandName}`);
+      
+      // Build the API URL
+      const params = new URLSearchParams({
+        api_key: apiKey,
+        engine: 'google_trends',
+        q: brandName,
+        data_type: 'TIMESERIES',
+        // Default to past 12 months
+        cat: '0', // All categories
+        geo: '', // Global
+        time: 'today 12-m', // Last 12 months
+        output: 'json'
+      });
+      
+      const url = `https://serpapi.com/search?${params.toString()}`;
+      console.log('📡 SerpAPI URL:', url.replace(apiKey, '[REDACTED]'));
+      
+      // Make the API request
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`🛑 SerpAPI Error (${response.status}):`, errorText);
+        throw new Error(`SerpAPI returned status ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Google Trends data retrieved successfully');
+      
+      // Extract interest over time data from SerpAPI response
+      // Format the response to match what the TrendsChart component expects
+      if (data.interest_over_time) {
+        console.log(`📊 Retrieved ${data.interest_over_time.timeline_data?.length || 0} data points`);
+        
+        // Calculate average if not provided by the API
+        if (!data.interest_over_time.averages || data.interest_over_time.averages.length === 0) {
+          const values = [];
+          
+          // Extract values from timeline data
+          data.interest_over_time.timeline_data?.forEach(point => {
+            if (point.values && point.values.length > 0) {
+              values.push(point.values[0].extracted_value || 0);
+            }
+          });
+          
+          // Calculate average
+          if (values.length > 0) {
+            const average = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+            data.interest_over_time.averages = [{ value: average }];
+          }
+        }
+        
+        return data;
+      }
+      
+      // Return empty structure if no data found
+      console.warn('⚠️ No interest_over_time data found in SerpAPI response');
+      return { interest_over_time: { timeline_data: [], averages: [] } };
+      
+    } catch (error) {
+      console.error('🚨 Error fetching Google Trends data:', error);
+      // Return empty structure on error
+      return { interest_over_time: { timeline_data: [], averages: [] } };
+    }
   }
   
   export async function getMozData(domain: string) {
@@ -189,78 +261,88 @@ export async function getGoogleTrendsData(brandName: string) {
   
   export async function generateAiAnalysis(brandData: any) {
     try {
-      // Check if OpenAI API key is configured
-      const apiKey = import.meta.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        console.error("OpenAI API key is not configured");
+      console.log("🔍 generateAiAnalysis called with brand:", brandData.name);
+      
+      // Check for OpenAI API key
+      if (!import.meta.env.OPENAI_API_KEY) {
+        console.error("❌ OpenAI API key is missing");
         return getFallbackAnalysis(brandData.name);
       }
-
-      // Log the raw SERP data to see what's available
-      console.log("Raw SERP data:", {
-        searchInformation: brandData.serp?.searchInformation,
-        searchMetadata: brandData.serp?.searchMetadata,
-        totalResults: brandData.serp?.totalResults,
-        organicResultsLength: brandData.serp?.organicResults?.length,
-        fullSerpObject: brandData.serp
-      });
-
-      // Extract and format SERP data more accurately
-      const serpTotalResults = brandData.serp?.searchInformation?.totalResults || 
-                              brandData.serp?.searchMetadata?.totalResults || 
-                              brandData.serp?.totalResults ||
-                              (brandData.serp?.organicResults?.length ? `${brandData.serp.organicResults.length}+` : 'Unknown');
       
-      // Format SERP results more clearly with explicit total results
-      const serpResultsFormatted = `${serpTotalResults || 'Unknown'} total results found (${brandData.serp?.organicResults?.length || 0} displayed)`;
-
-      // Log the extracted SERP data
-      console.log("Extracted SERP data:", {
-        serpTotalResults,
-        serpResultsFormatted,
-        organicResultsCount: brandData.serp?.organicResults?.length || 0
-      });
-
-      // Create a more structured and explicit data object for OpenAI
+      // Create enhanced brand data structure with validation
       const enhancedBrandData = {
-        ...brandData,
+        name: brandData.name || "Unknown Brand",
+        sentimentScore: brandData.sentimentScore || 50,
+        domainAuthority: brandData.domainAuthority || 0,
+        news: brandData.news || { articles: [] },
+        serp: brandData.serp || {},
         serpData: {
-          totalResults: serpTotalResults,
-          formattedResults: serpResultsFormatted,
-          organicResultsCount: brandData.serp?.organicResults?.length || 0,
-          topPosition: brandData.serp?.topPosition || 'Unknown',
-          features: brandData.serp?.features || []
+          totalResults: brandData.serp?.search_information?.total_results || 
+                       brandData.serpTotalResults || 
+                       "Unknown",
+          organicResultsCount: brandData.serp?.organic_results?.length || 
+                              brandData.organicResultsCount || 
+                              0,
+          topPosition: brandData.serp?.organic_results?.[0]?.position || "Unknown"
         }
       };
       
-      // Log the final data being sent to OpenAI
-      console.log("Final data being sent to OpenAI:", {
-        brandName: enhancedBrandData.name,
+      console.log("🧩 Enhanced data prepared:", {
+        name: enhancedBrandData.name,
         sentimentScore: enhancedBrandData.sentimentScore,
-        domainAuthority: enhancedBrandData.domainAuthority,
-        newsArticlesCount: enhancedBrandData.news?.articles?.length || 0,
-        serpData: enhancedBrandData.serpData,
-        firstFewOrganicResults: enhancedBrandData.serp?.organicResults?.slice(0, 3).map(r => r.title) || []
+        serpTotalResults: enhancedBrandData.serpData.totalResults,
+        newsArticleCount: enhancedBrandData.news?.articles?.length
       });
+
+      // Import OpenAI function dynamically to ensure it's loaded
+      let swotAnalysis;
+      try {
+        const { generateEnhancedSwotAnalysis } = await import('./openai-api');
+        console.log("⚡ OpenAI function imported successfully");
+        
+        // Set timeout for OpenAI call (45 seconds)
+        const timeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("OpenAI request timed out")), 45000)
+        );
+        
+        console.log("🤖 Calling OpenAI for analysis...");
+        swotAnalysis = await Promise.race([
+          generateEnhancedSwotAnalysis(enhancedBrandData),
+          timeout
+        ]);
+        
+        console.log("✅ OpenAI analysis received:", 
+          swotAnalysis ? `${swotAnalysis.substring(0, 50)}...` : "null");
+      } catch (openaiError) {
+        console.error("❌ OpenAI analysis error:", openaiError);
+        return parseAnalysisText(`
+          Strengths:
+          - Brand analysis attempted
+          
+          Weaknesses:
+          - Error connecting to AI service: ${openaiError.message}
+          
+          Opportunities:
+          - Try again later when service is available
+          
+          Threats:
+          - None identified
+          
+          Summary:
+          We encountered a technical issue while analyzing this brand. Please try again later.
+        `);
+      }
       
-      // Use our enhanced SWOT analysis function with improved data
-      const analysisText = await generateEnhancedSwotAnalysis(enhancedBrandData);
-      
-      if (!analysisText) {
-        console.error("Failed to generate analysis");
+      // If we got a string response, parse it into sections
+      if (typeof swotAnalysis === 'string' && swotAnalysis.length > 0) {
+        console.log("📊 Parsing AI analysis text...");
+        return parseAnalysisText(swotAnalysis);
+      } else {
+        console.error("❌ Invalid OpenAI response format");
         return getFallbackAnalysis(brandData.name);
       }
-      
-      console.log("Raw OpenAI response text:", analysisText);
-      
-      // Parse the analysis text into structured data
-      return parseAnalysisText(analysisText);
     } catch (error) {
-      console.error("Error generating AI analysis:", error);
-      if (error instanceof Error) {
-        console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
-      }
+      console.error("💥 Fatal error in generateAiAnalysis:", error);
       return getFallbackAnalysis(brandData.name);
     }
   }
@@ -352,144 +434,87 @@ export async function getGoogleTrendsData(brandName: string) {
 
   // Helper function to parse the analysis text into structured data
   function parseAnalysisText(text: string) {
+    console.log("🔍 Parsing analysis text of length:", text.length);
+    
     try {
-      console.log("Starting to parse analysis text:", text.substring(0, 100) + "...");
-      
-      const sections = {
+      // Initialize sections with empty arrays
+      const sections: any = {
         strengths: [],
         weaknesses: [],
         opportunities: [],
         threats: [],
-        summary: ''
+        summary: ""
       };
       
-      // Extract strengths
-      const strengthsMatch = text.match(/Strengths:?\s*([\s\S]*?)(?=Weaknesses:|$)/i);
-      console.log("Strengths match:", strengthsMatch ? "Found" : "Not found");
-      if (strengthsMatch && strengthsMatch[1]) {
-        const strengthsText = strengthsMatch[1];
-        console.log("Raw strengths text:", strengthsText);
-        
-        // Try different bullet point patterns
-        let strengthLines = strengthsText.split('\n')
-          .filter((line: string) => line.trim().startsWith('-') || 
-                          line.trim().startsWith('•') || 
-                          line.trim().startsWith('*') ||
-                          /^\d+\./.test(line.trim()))
-          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
-          .filter(line => line);
-        
-        // If no bullet points found, try to split by newlines
-        if (strengthLines.length === 0) {
-          strengthLines = strengthsText.split('\n')
-            .map((line: string) => line.trim())
-            .filter((line: string) => line && !line.toLowerCase().includes('strengths'));
-        }
-        
-        sections.strengths = strengthLines as any;
-        console.log("Parsed strengths:", sections.strengths);
-      }
+      // Standardize the format to make parsing more reliable
+      const standardizedText = text
+        .replace(/\*\*(.*?)\*\*/g, "$1") // Remove markdown ** formatting
+        .replace(/^[#]+\s+/gm, "") // Remove any markdown headers
+        .trim();
       
-      // Extract weaknesses (similar approach)
-      const weaknessesMatch = text.match(/Weaknesses:?\s*([\s\S]*?)(?=Opportunities:|$)/i);
-      console.log("Weaknesses match:", weaknessesMatch ? "Found" : "Not found");
-      if (weaknessesMatch && weaknessesMatch[1]) {
-        const weaknessesText = weaknessesMatch[1];
-        
-        let weaknessLines = weaknessesText.split('\n')
-          .filter((line: string) => line.trim().startsWith('-') || 
-                          line.trim().startsWith('•') || 
-                          line.trim().startsWith('*') ||
-                          /^\d+\./.test(line.trim()))
-          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
-          .filter(line => line);
-        
-        if (weaknessLines.length === 0) {
-          weaknessLines = weaknessesText.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.toLowerCase().includes('weaknesses'));
-        }
-        
-        sections.weaknesses = weaknessLines as any;
-      }
+      // First split by clear section headers to avoid nested matches
+      const parts = standardizedText.split(/(?:^|\n)(?:Strengths|Weaknesses|Opportunities|Threats|Summary):/i);
       
-      // Extract opportunities (similar approach)
-      const opportunitiesMatch = text.match(/Opportunities:?\s*([\s\S]*?)(?=Threats:|$)/i);
-      console.log("Opportunities match:", opportunitiesMatch ? "Found" : "Not found");
-      if (opportunitiesMatch && opportunitiesMatch[1]) {
-        const opportunitiesText = opportunitiesMatch[1];
-        
-        let opportunityLines = opportunitiesText.split('\n')
-          .filter(line => line.trim().startsWith('-') || 
-                          line.trim().startsWith('•') || 
-                          line.trim().startsWith('*') ||
-                          /^\d+\./.test(line.trim()))
-          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
-          .filter(line => line);
-        
-        if (opportunityLines.length === 0) {
-          opportunityLines = opportunitiesText.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.toLowerCase().includes('opportunities'));
-        }
-        
-        sections.opportunities = opportunityLines as any;
-      }
+      // The first part is usually introductory text
+      // Then the parts alternate between section name and content
       
-      // Extract threats (similar approach)
-      const threatsMatch = text.match(/Threats:?\s*([\s\S]*?)(?=Summary:|$)/i);
-      console.log("Threats match:", threatsMatch ? "Found" : "Not found");
-      if (threatsMatch && threatsMatch[1]) {
-        const threatsText = threatsMatch[1];
-        
-        let threatLines = threatsText.split('\n')
-          .filter(line => line.trim().startsWith('-') || 
-                          line.trim().startsWith('•') || 
-                          line.trim().startsWith('*') ||
-                          /^\d+\./.test(line.trim()))
-          .map(line => line.replace(/^[•\-*\d\.]\s*/, '').trim())
-          .filter(line => line);
-        
-        if (threatLines.length === 0) {
-          threatLines = threatsText.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.toLowerCase().includes('threats'));
-        }
-        
-        sections.threats = threatLines as any;
-      }
+      // Get the section names in the original order they appear
+      const sectionOrder = standardizedText
+        .match(/(?:^|\n)(Strengths|Weaknesses|Opportunities|Threats|Summary):/gi)
+        ?.map(s => s.replace(/[^a-z]/gi, '').toLowerCase());
       
-      // Extract summary
-      const summaryMatch = text.match(/Summary:?\s*([\s\S]*?)$/i);
-      console.log("Summary match:", summaryMatch ? "Found" : "Not found");
-      if (summaryMatch && summaryMatch[1]) {
-        sections.summary = summaryMatch[1].trim();
+      if (!sectionOrder || sectionOrder.length === 0) {
+        console.warn("⚠️ No standard SWOT sections found, using fallback parsing");
+        // Use old regex approach as fallback
       } else {
-        // If no explicit summary section, use the last paragraph
-        const paragraphs = text.split('\n\n');
-        const lastParagraph = paragraphs[paragraphs.length - 1].trim();
-        if (lastParagraph && !lastParagraph.match(/^(Strengths|Weaknesses|Opportunities|Threats):/i)) {
-          sections.summary = lastParagraph;
+        console.log("📋 Sections found in order:", sectionOrder);
+        
+        // For each section, extract the content from the respective part
+        for (let i = 0; i < sectionOrder.length; i++) {
+          const sectionName = sectionOrder[i].toLowerCase();
+          const content = parts[i + 1]?.trim(); // +1 because first part is before any section
+          
+          if (content) {
+            if (sectionName === 'summary') {
+              sections.summary = content;
+            } else {
+              // Extract bullet points
+              const bulletPoints = content
+                .split(/\n/)
+                .map(line => line.trim())
+                .filter(line => line.startsWith('-') || line.startsWith('•') || /^\d+\./.test(line))
+                .map(line => line.replace(/^[•\-\d\.]\s*/, '').trim());
+              
+              // If no bullet points found, use paragraph breaks
+              const items = bulletPoints.length > 0 
+                ? bulletPoints 
+                : content.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+              
+              // Store in the appropriate section
+              sections[sectionName] = items;
+            }
+          }
         }
       }
       
-      console.log("Final parsed sections:", {
-        strengthsCount: sections.strengths.length,
-        weaknessesCount: sections.weaknesses.length,
-        opportunitiesCount: sections.opportunities.length,
-        threatsCount: sections.threats.length,
+      // Verify we have content in each section
+      console.log("✅ Parsed content:", {
+        strengths: sections.strengths.length,
+        weaknesses: sections.weaknesses.length,
+        opportunities: sections.opportunities.length, 
+        threats: sections.threats.length,
         summaryLength: sections.summary.length
       });
       
       return sections;
     } catch (error) {
-      console.error("Error parsing analysis text:", error);
+      console.error("❌ Error parsing analysis text:", error);
       return {
-        strengths: [],
+        strengths: ["Error parsing analysis"],
         weaknesses: [],
         opportunities: [],
         threats: [],
-        summary: "Error parsing analysis."
+        summary: "There was an error processing the analysis."
       };
     }
   }
