@@ -2,7 +2,79 @@
 import { generateEnhancedSwotAnalysis } from './openai-api';
 
 export async function getGoogleTrendsData(brandName: string) {
-    // Implementation using Google Trends API
+    try {
+      const apiKey = import.meta.env.SERP_API_KEY;
+      
+      if (!apiKey) {
+        console.warn('⚠️ SERP_API_KEY not found in environment variables');
+        return { interest_over_time: { timeline_data: [], averages: [] } };
+      }
+      
+      console.log(`🔍 Fetching Google Trends data for: ${brandName}`);
+      
+      // Build the API URL
+      const params = new URLSearchParams({
+        api_key: apiKey,
+        engine: 'google_trends',
+        q: brandName,
+        data_type: 'TIMESERIES',
+        // Default to past 12 months
+        cat: '0', // All categories
+        geo: '', // Global
+        time: 'today 12-m', // Last 12 months
+        output: 'json'
+      });
+      
+      const url = `https://serpapi.com/search?${params.toString()}`;
+      console.log('📡 SerpAPI URL:', url.replace(apiKey, '[REDACTED]'));
+      
+      // Make the API request
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`🛑 SerpAPI Error (${response.status}):`, errorText);
+        throw new Error(`SerpAPI returned status ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Google Trends data retrieved successfully');
+      
+      // Extract interest over time data from SerpAPI response
+      // Format the response to match what the TrendsChart component expects
+      if (data.interest_over_time) {
+        console.log(`📊 Retrieved ${data.interest_over_time.timeline_data?.length || 0} data points`);
+        
+        // Calculate average if not provided by the API
+        if (!data.interest_over_time.averages || data.interest_over_time.averages.length === 0) {
+          const values = [];
+          
+          // Extract values from timeline data
+          data.interest_over_time.timeline_data?.forEach(point => {
+            if (point.values && point.values.length > 0) {
+              values.push(point.values[0].extracted_value || 0);
+            }
+          });
+          
+          // Calculate average
+          if (values.length > 0) {
+            const average = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+            data.interest_over_time.averages = [{ value: average }];
+          }
+        }
+        
+        return data;
+      }
+      
+      // Return empty structure if no data found
+      console.warn('⚠️ No interest_over_time data found in SerpAPI response');
+      return { interest_over_time: { timeline_data: [], averages: [] } };
+      
+    } catch (error) {
+      console.error('🚨 Error fetching Google Trends data:', error);
+      // Return empty structure on error
+      return { interest_over_time: { timeline_data: [], averages: [] } };
+    }
   }
   
   export async function getMozData(domain: string) {

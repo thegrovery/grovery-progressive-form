@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getNewsData, getSerpData, generateAiAnalysis, calculateSentimentScore } from '../../lib/api-services';
+import { getNewsData, getSerpData, generateAiAnalysis, calculateSentimentScore, getGoogleTrendsData } from '../../lib/api-services';
 import { fetchMozDomainAuthority } from '../../lib/moz-api';
 import { fetchSerpResults } from '../../lib/serp-api';
 import BrandSentimentCard from '../../components/dashboard/BrandSentimentCard.astro';
@@ -94,6 +94,11 @@ try {
       summary: "Basic brand data collected. Contact support for a complete analysis."
     };
   }
+
+  // Fetch Google Trends data if brandName is provided
+  if (brandName) {
+    trendsData = await getGoogleTrendsData(brandName);
+  }
 } catch (error) {
   console.error("Error fetching brand data:", error);
   // sentimentScore already has a default value
@@ -128,7 +133,9 @@ try {
         <!-- Middle and right columns: Trends Chart and SERP Results -->
         <div class="lg:col-span-2 space-y-6">
           <!-- Trends Chart -->
-          <TrendsChart trendsData={trendsData} brandName={brandName} />
+          <section class="mb-8">
+            <TrendsChart data={trendsData} brandName={brandName || ''} />
+          </section>
           
           <!-- SERP Results Card -->
           <SerpResultsCard serpData={serpData} />

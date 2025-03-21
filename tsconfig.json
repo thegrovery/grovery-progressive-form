@@ -1,13 +1,13 @@
 {
-  "extends": "astro/tsconfigs/strict",
+  "extends": "astro/tsconfigs/base",
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "astro",
     "types": ["astro/client"],
+    "moduleResolution": "bundler",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
